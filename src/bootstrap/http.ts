@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import { loadConfig } from '../config/env.js';
+import { createApp } from './app.js';
 import { createAppContainer } from './container.js';
-import { createHttpApp } from './http-app.js';
 
 const config = loadConfig();
 const container = createAppContainer(config);
-const app = createHttpApp(container);
+const app = createApp(container);
 
 const server = app.listen(config.http.port, () => {
 	container.logger.info(
