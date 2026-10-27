@@ -68,9 +68,6 @@ export interface AppContainer {
 }
 
 function createUniversitySource(config: AppConfig): UniversityAcademicSource {
-	if (config.university.fixturePath) {
-		return new FixtureUniversitySource(config.university.fixturePath);
-	}
 	if (config.university.queryParam && config.university.queryR) {
 		return new HTMLUniversitySource({
 			sourceKey: config.university.sourceKey,
@@ -82,8 +79,17 @@ function createUniversitySource(config: AppConfig): UniversityAcademicSource {
 			gridInfo: config.university.gridInfo,
 			chkMain: config.university.chkMain,
 			requestTimeoutMs: config.university.requestTimeoutMs,
+			cookie: config.university.cookie,
+			origin: config.university.origin,
+			referer: config.university.referer,
+			xRequestedWith: config.university.xRequestedWith,
 		});
 	}
+
+	if (config.university.fixturePath) {
+		return new FixtureUniversitySource(config.university.fixturePath);
+	}
+
 	return new UnavailableUniversitySource();
 }
 
