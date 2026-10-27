@@ -24,7 +24,6 @@ function makeRequest(
 		gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 		chkMain: true,
 		requestTimeoutMs: 5000,
-		xRequestedWith: 'XMLHttpRequest',
 		...overrides,
 	};
 }
@@ -96,7 +95,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -125,7 +123,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -168,7 +165,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -193,7 +189,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -222,7 +217,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -255,7 +249,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -279,7 +272,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -305,7 +297,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -328,7 +319,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -352,7 +342,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -376,7 +365,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			await expect(source.fetchSnapshot(makeRequest())).rejects.toThrow(
@@ -397,7 +385,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			await expect(source.fetchSnapshot(makeRequest())).rejects.toThrow(
@@ -418,7 +405,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			await expect(source.fetchSnapshot(makeRequest())).rejects.toThrow(
@@ -451,7 +437,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: 'grid_info_value',
 				chkMain: false,
 				requestTimeoutMs: 10000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const request = makeRequest({ termCode: '14052' });
@@ -501,7 +486,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 30000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			await source.fetchSnapshot(makeRequest());
@@ -529,7 +513,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot1 = await source.fetchSnapshot(makeRequest());
@@ -560,7 +543,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
@@ -587,7 +569,6 @@ describe('HTMLUniversitySource', () => {
 				gridInfo: '0;1;1;1;;;onGridLoad;1;;;',
 				chkMain: true,
 				requestTimeoutMs: 5000,
-				xRequestedWith: 'XMLHttpRequest',
 			});
 
 			const snapshot = await source.fetchSnapshot(makeRequest());

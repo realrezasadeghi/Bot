@@ -80,9 +80,6 @@ function createUniversitySource(config: AppConfig): UniversityAcademicSource {
 			chkMain: config.university.chkMain,
 			requestTimeoutMs: config.university.requestTimeoutMs,
 			cookie: config.university.cookie,
-			origin: config.university.origin,
-			referer: config.university.referer,
-			xRequestedWith: config.university.xRequestedWith,
 		});
 	}
 

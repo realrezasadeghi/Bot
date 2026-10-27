@@ -67,9 +67,6 @@ const envSchema = z.object({
 		.max(120_000)
 		.default(20_000),
 	UNIVERSITY_COOKIE: optionalNonEmpty,
-	UNIVERSITY_ORIGIN: optionalNonEmpty,
-	UNIVERSITY_REFERER: optionalNonEmpty,
-	UNIVERSITY_X_REQUESTED_WITH: z.string().default('XMLHttpRequest'),
 	UNIVERSITY_HTML_FIXTURE_PATH: optionalNonEmpty,
 
 	TELEGRAM_BOT_TOKEN: optionalNonEmpty,
@@ -137,9 +134,6 @@ export type AppConfig = Readonly<{
 		chkMain: boolean;
 		requestTimeoutMs: number;
 		cookie?: string;
-		origin?: string;
-		referer?: string;
-		xRequestedWith: string;
 		fixturePath?: string;
 	};
 	telegram?: {
@@ -222,9 +216,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			chkMain: value.UNIVERSITY_CHK_MAIN,
 			requestTimeoutMs: value.UNIVERSITY_REQUEST_TIMEOUT_MS,
 			cookie: value.UNIVERSITY_COOKIE,
-			origin: value.UNIVERSITY_ORIGIN,
-			referer: value.UNIVERSITY_REFERER,
-			xRequestedWith: value.UNIVERSITY_X_REQUESTED_WITH,
 			fixturePath: value.UNIVERSITY_HTML_FIXTURE_PATH,
 		},
 		telegram: value.TELEGRAM_BOT_TOKEN

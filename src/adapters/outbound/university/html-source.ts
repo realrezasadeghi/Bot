@@ -404,9 +404,6 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 	private readonly chkMain: boolean;
 	private readonly requestTimeoutMs: number;
 	private readonly cookie: string | undefined;
-	private readonly origin: string | undefined;
-	private readonly referer: string | undefined;
-	private readonly xRequestedWith: string;
 
 	constructor(config: {
 		sourceKey: string;
@@ -419,9 +416,6 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 		chkMain: boolean;
 		requestTimeoutMs: number;
 		cookie?: string;
-		origin?: string;
-		referer?: string;
-		xRequestedWith: string;
 	}) {
 		this.sourceKey = config.sourceKey;
 		this.offerUrl = config.offerUrl;
@@ -433,9 +427,6 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 		this.chkMain = config.chkMain;
 		this.requestTimeoutMs = config.requestTimeoutMs;
 		this.cookie = config.cookie;
-		this.origin = config.origin;
-		this.referer = config.referer;
-		this.xRequestedWith = config.xRequestedWith;
 	}
 
 	async fetchSnapshot(
@@ -467,12 +458,9 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 				'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
 				'user-agent':
 					'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36',
-				'x-requested-with': this.xRequestedWith,
 			};
 
 			if (this.cookie) headers.cookie = this.cookie;
-			if (this.origin) headers.origin = this.origin;
-			if (this.referer) headers.referer = this.referer;
 
 			response = await fetch(url, {
 				signal: AbortSignal.timeout(this.requestTimeoutMs),
