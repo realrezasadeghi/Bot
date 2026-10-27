@@ -1,0 +1,320 @@
+{
+	"info": {
+		"name": "Academic Scheduling Bot - University HTML Source",
+		"_postman_id": "academic-scheduling-bot-university-html-source",
+		"description": "Postman collection for testing the HTMLUniversitySource adapter that fetches academic data from the university ASP.NET WebForms portal. Mirrors the request flow implemented in src/adapters/outbound/university/html-source.ts.\n\nBase variables:\n- offerUrl: University portal endpoint\n- queryParam: Query parameter name for term (e.g. 'param')\n- queryR: Session/request token (e.g. 'r-value')\n- termCode: Academic term code (e.g. '14051')\n- viewStateGenerator: ASP.NET __VIEWSTATEGENERATOR value\n- gridInfo: ASP.NET mx_grid_info hidden field value\n- chkMain: ASP.NET Chk_main checkbox value ('true' or 'false')\n- requestTimeoutMs: Request timeout in milliseconds",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Fetch University Academic Snapshot",
+			"description": "POST form-urlencoded request to the university OfferShow portal. Mirrors HTMLUniversitySource.getHtmlResponse(). Returns the raw HTML containing the course schedule table.\n\nQuery params appended to URL:\n- {{queryParam}}={{termCode}}\n- r={{queryR}}\n\nForm body fields:\n- __VIEWSTATEGENERATOR={{viewStateGenerator}}\n- HiTerm={{termCode}}\n- Name=\n- Chk_main={{chkMain}}\n- mx_grid_info={{gridInfo}}\n- Term_Drp={{termCode}}",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/html,application/xhtml+xml",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"type": "text"
+					},
+					{
+						"key": "User-Agent",
+						"value": "academic-scheduling-bot/0.1 (inspection)",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "__VIEWSTATEGENERATOR",
+							"value": "{{viewStateGenerator}}",
+							"type": "text"
+						},
+						{
+							"key": "HiTerm",
+							"value": "{{termCode}}",
+							"type": "text"
+						},
+						{
+							"key": "Name",
+							"value": "",
+							"type": "text"
+						},
+						{
+							"key": "Chk_main",
+							"value": "{{chkMain}}",
+							"type": "text"
+						},
+						{
+							"key": "mx_grid_info",
+							"value": "{{gridInfo}}",
+							"type": "text"
+						},
+						{
+							"key": "Term_Drp",
+							"value": "{{termCode}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{offerUrl}}?{{queryParam}}={{termCode}}&r={{queryR}}",
+					"host": [
+						"{{offerUrl}}"
+					],
+					"query": [
+						{
+							"key": "{{queryParam}}",
+							"value": "{{termCode}}"
+						},
+						{
+							"key": "r",
+							"value": "{{queryR}}"
+						}
+					]
+				},
+				"description": "Submits the ASP.NET WebForms postback to retrieve the course schedule HTML for the configured term."
+			},
+			"response": [
+				{
+					"name": "200 OK - Valid course table HTML",
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "text/html; charset=utf-8"
+						}
+					],
+					"body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Offer Show</title>\n</head>\n<body>\n<input type=\"hidden\" id=\"mx_grid_info\" value=\"0;1;1;1;;;onGridLoad;0\"/>\n<table class=\"mxgrid_header\" style=\"width:100%;\">\n    <tr>\n        <th style=\"width:30px;\">\u0631\u062f\u06cc\u0641</th>\n        <th style=\"width:220px;\">\u0646\u0627\u0645 \u062f\u0631\u0633</th>\n        <th style=\"width:110px;\">\u0627\u0633\u062a\u0627\u062f</th>\n        <th style=\"\">\u0628\u0631\u0646\u0627\u0645\u0647 \u0632\u0645\u0627\u0646\u06cc</th>\n        <th style=\"\">\u0632\u0645\u0627\u0646 \u0627\u0645\u062a\u062d\u0627\u0646</th>\n        <th style=\"width:100px;\">\u0645\u0642\u0637\u0639</th>\n        <th style=\"width:40px;\">\u062a\u0631\u0645</th>\n        <th style=\"width:30px;\">\u0638\u0631\u0641\u06cc\u062a \u0645\u0627\u0646\u062f\u0647</th>\n        <th style=\"width:30px;\"></th>\n    </tr>\n</table>\n<div id=\"mxgrid_table_container\" style=\"width:100%;\">\n    <table class=\"mxgrid\" style=\"width:100%;\">\n        <tr class=\"selected\">\n            <td style=\"width:30px;\">1</td>\n            <td style=\"width:220px;\">\u0622\u0632\u0645\u0627\u06cc\u0634\u06af\u0627\u0647 \u062a\u0643\u0646\u0648\u0644\u0648\u062c\u06cc \u0628\u062a\u0646 \u06af\u0631\u0648\u0647 1</td>\n            <td style=\"width:110px;\">\u0633\u0639\u06cc\u062f\u0647 \u0642\u0627\u0626\u0645\u06cc \u0641\u0631\u062f (\u062d\u0636\u0648\u0631\u06cc)</td>\n            <td style=\"\">\u067e\u0646\u062c \u0634\u0646\u0628\u0647 12:00 - 13:50 \u06a9\u0627\u0631\u06af\u0627\u0647 \u0639\u0645\u0631\u0627\u0646 \u0645\u062d\u0644 \u0628\u0631\u063a\u0632\u0627\u0631\u06cc  \u0627\u0645\u0627\u0645\u062a 46 - \u067e\u0644\u0627\u0643 81 **</td>\n            <td style=\"\">\u067e\u0627\u06cc\u0627\u0646 \u062a\u0631\u0645 1405/11/08 - \u067e\u0646\u062c\u0634\u0646\u0628\u0647 \u0627\u0632 12:00 \u062a\u0627 13:30 **</td>\n            <td style=\"width:100px;\">\u06a9\u0627\u0631\u0634\u0646\u0627\u0633\u06cc \u067e\u06cc\u0648\u0633\u062a\u0647</td>\n            <td style=\"width:40px;\">14051</td>\n            <td style=\"width:30px;\">0</td>\n            <td style=\"width:30px\"><input type=\"button\" class=\"detail\" value=\"\" onclick=\"onDetailClick(this);\"/></td>\n        </tr>\n    </table>\n</div>\n</body>\n</html>",
+					"_postman_previewlanguage": "html"
+				},
+				{
+					"name": "200 OK - Login / Error Page",
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "text/html; charset=utf-8"
+						}
+					],
+					"body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Login - \u0648\u0631\u0648\u062f \u0628\u0647 \u0633\u06cc\u0633\u062a\u0645</title>\n</head>\n<body>\n<form method=\"post\" action=\"/login\">\n    <input type=\"hidden\" name=\"__VIEWSTATE\" value=\"abc123\"/>\n    <input type=\"password\" name=\"password\"/>\n    <input type=\"submit\" value=\"\u0648\u0631\u0648\u062f\"/>\n</form>\n<div>Please log in to access this page.</div>\n</body>\n</html>",
+					"_postman_previewlanguage": "html"
+				},
+				{
+					"name": "404 Not Found",
+					"status": "Not Found",
+					"code": 404,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "text/html"
+						}
+					],
+					"body": "Error 404"
+				},
+				{
+					"name": "500 Internal Server Error",
+					"status": "Internal Server Error",
+					"code": 500,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "text/html"
+						}
+					],
+					"body": "Error 500"
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Validate required variables are set",
+							"const required = ['offerUrl', 'queryParam', 'queryR', 'termCode', 'viewStateGenerator', 'gridInfo', 'chkMain'];",
+							"for (const key of required) {",
+							"  const val = pm.variables.get(key);",
+							"  if (!val) {",
+							"    console.log('Warning: Variable ' + key + ' is not set');",
+							"  }",
+							"}",
+							"",
+							"// Log the outgoing request for debugging",
+							"console.log('POST ' + pm.variables.get('offerUrl') + '?' + pm.variables.get('queryParam') + '=' + pm.variables.get('termCode') + '&r=' + pm.variables.get('queryR'));"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 2xx', function () {",
+							"  pm.response.to.be.success;",
+							"});",
+							"",
+							"pm.test('Content-Type is HTML', function () {",
+							"  pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html');",
+							"});",
+							"",
+							"pm.test('Response contains course table headers', function () {",
+							"  const body = pm.response.text();",
+							"  pm.expect(body).to.include('\u0646\u0627\u0645 \u062f\u0631\u0633');",
+							"  pm.expect(body).to.include('\u0627\u0633\u062a\u0627\u062f');",
+							"  pm.expect(body).to.include('\u0628\u0631\u0646\u0627\u0645\u0647 \u0632\u0645\u0627\u0646\u06cc');",
+							"  pm.expect(body).to.include('\u0645\u0642\u0637\u0639');",
+							"  pm.expect(body).to.include('\u062a\u0631\u0645');",
+							"});",
+							"",
+							"pm.test('Response is not a login page', function () {",
+							"  const body = pm.response.text();",
+							"  pm.expect(body.toLowerCase()).to.not.include('\u0648\u0631\u0648\u062f');",
+							"  pm.expect(body).to.not.include('type=\"password\"');",
+							"});",
+							"",
+							"pm.test('Response body is not empty', function () {",
+							"  pm.expect(pm.response.text().length).to.be.above(0);",
+							"});"
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Inspect University HTML (CLI Equivalent)",
+			"description": "GET request equivalent to the 'university:inspect' CLI command (tsx src/cli/inspect-university.ts). This is a read-only inspection request that fetches the HTML without submitting form data.\n\nNote: The actual adapter uses POST with form-urlencoded body. This GET request is for inspection/diagnostic purposes only.",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/html,application/xhtml+xml",
+						"type": "text"
+					},
+					{
+						"key": "User-Agent",
+						"value": "academic-scheduling-bot/0.1 (inspection)",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{offerUrl}}?{{queryParam}}={{termCode}}&r={{queryR}}",
+					"host": [
+						"{{offerUrl}}"
+					],
+					"query": [
+						{
+							"key": "{{queryParam}}",
+							"value": "{{termCode}}"
+						},
+						{
+							"key": "r",
+							"value": "{{queryR}}"
+						}
+					]
+				},
+				"description": "Diagnostic GET request to inspect the university portal HTML structure without submitting ASP.NET postback data."
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Response contains HTML', function () {",
+							"  pm.expect(pm.response.text()).to.include('<html');",
+							"});",
+							"",
+							"pm.test('Response title is not login/error', function () {",
+							"  const titleMatch = pm.response.text().match(/<title[^>]*>([^<]+)<\\/title>/i);",
+							"  if (titleMatch) {",
+							"    const title = titleMatch[1].toLowerCase();",
+							"    pm.expect(title).to.not.include('login');",
+							"    pm.expect(title).to.not.include('\u062e\u0637\u0627');",
+							"    pm.expect(title).to.not.include('error');",
+							"  }",
+							"});"
+						]
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "offerUrl",
+			"value": "https://portal.eqbal.ac.ir/Subsystem/Amozesh/Programming/Silabes/Offer/OfferShow/OfferShow.aspx",
+			"type": "string",
+			"description": "University portal OfferShow.aspx endpoint (UNIVERSITY_OFFER_URL)"
+		},
+		{
+			"key": "queryParam",
+			"value": "param",
+			"type": "string",
+			"description": "Query parameter name for term code (UNIVERSITY_QUERY_PARAM)"
+		},
+		{
+			"key": "queryR",
+			"value": "",
+			"type": "string",
+			"description": "Session/request token (UNIVERSITY_QUERY_R)"
+		},
+		{
+			"key": "termCode",
+			"value": "14051",
+			"type": "string",
+			"description": "Academic term code (UNIVERSITY_TERM_CODE)"
+		},
+		{
+			"key": "viewStateGenerator",
+			"value": "AF036D42",
+			"type": "string",
+			"description": "ASP.NET __VIEWSTATEGENERATOR hidden field value (UNIVERSITY_VIEWSTATE_GENERATOR)"
+		},
+		{
+			"key": "gridInfo",
+			"value": "0;1;1;1;;;onGridLoad;1;;;",
+			"type": "string",
+			"description": "ASP.NET mx_grid_info hidden field value (UNIVERSITY_GRID_INFO)"
+		},
+		{
+			"key": "chkMain",
+			"value": "true",
+			"type": "string",
+			"description": "ASP.NET Chk_main checkbox value (UNIVERSITY_CHK_MAIN)"
+		},
+		{
+			"key": "requestTimeoutMs",
+			"value": "20000",
+			"type": "string",
+			"description": "Request timeout in milliseconds (UNIVERSITY_REQUEST_TIMEOUT_MS)"
+		}
+	],
+	"profile": null,
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Collection-level prerequest: log environment",
+					"console.log('[University HTML Source] Running against {{offerUrl}}');",
+					"console.log('[University HTML Source] Term: {{termCode}}');"
+				]
+			}
+		}
+	]
+}
