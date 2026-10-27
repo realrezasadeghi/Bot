@@ -1,0 +1,85 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"correctness": {
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"noUndeclaredVariables": "error"
+			},
+			"complexity": {
+				"noUselessTypeConstraint": "error",
+				"noForEach": "off"
+			},
+			"style": {
+				"useConst": "error",
+				"useImportType": "error",
+				"noParameterAssign": "error",
+				"useTemplate": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "warn",
+				"noConsole": "warn"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 1,
+		"lineWidth": 80,
+		"lineEnding": "lf"
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"trailingCommas": "all",
+			"semicolons": "always",
+			"arrowParentheses": "always"
+		}
+	},
+	"json": {
+		"formatter": {
+			"trailingCommas": "none"
+		}
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!**/dist/**",
+			"!**/build/**",
+			"!**/node_modules/**",
+			"!**/drizzle/**",
+			"!**/coverage/**",
+			"!**/.turbo/**",
+			"!**/.cache/**",
+			"!**/.env*",
+			"!**/pnpm-lock.yaml",
+			"!**/package-lock.json",
+			"!**/yarn.lock"
+		]
+	},
+	"overrides": [
+		{
+			"includes": ["src/cli/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		}
+	]
+}

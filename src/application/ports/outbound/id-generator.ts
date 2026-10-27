@@ -1,3 +1,3 @@
 export interface IdGenerator {
-  next(): string;
+	next(): string;
 }

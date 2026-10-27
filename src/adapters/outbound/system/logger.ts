@@ -1,62 +1,62 @@
-import pino, { type Logger as PinoLogger } from "pino";
-import type { Logger } from "../../../application/ports/outbound/logger.js";
+import pino, { type Logger as PinoLogger } from 'pino';
+import type { Logger } from '../../../application/ports/outbound/logger.js';
 
 export class PinoLoggerAdapter implements Logger {
-  constructor(private readonly logger: PinoLogger) {}
+	constructor(private readonly logger: PinoLogger) {}
 
-  debug(bindings: Record<string, unknown>, message: string): void {
-    this.logger.debug(bindings, message);
-  }
+	debug(bindings: Record<string, unknown>, message: string): void {
+		this.logger.debug(bindings, message);
+	}
 
-  info(bindings: Record<string, unknown>, message: string): void {
-    this.logger.info(bindings, message);
-  }
+	info(bindings: Record<string, unknown>, message: string): void {
+		this.logger.info(bindings, message);
+	}
 
-  warn(bindings: Record<string, unknown>, message: string): void {
-    this.logger.warn(bindings, message);
-  }
+	warn(bindings: Record<string, unknown>, message: string): void {
+		this.logger.warn(bindings, message);
+	}
 
-  error(bindings: Record<string, unknown>, message: string): void {
-    this.logger.error(bindings, message);
-  }
+	error(bindings: Record<string, unknown>, message: string): void {
+		this.logger.error(bindings, message);
+	}
 
-  child(bindings: Record<string, unknown>): Logger {
-    return new PinoLoggerAdapter(this.logger.child(bindings));
-  }
+	child(bindings: Record<string, unknown>): Logger {
+		return new PinoLoggerAdapter(this.logger.child(bindings));
+	}
 }
 
 export function createLogger(
-  level: string,
-  logPretty: boolean,
-  nodeEnv: "development" | "production" | "test",
+	level: string,
+	logPretty: boolean,
+	nodeEnv: 'development' | 'production' | 'test',
 ): Logger {
-  const prettyEnabled = logPretty === true || nodeEnv !== "production";
+	const prettyEnabled = logPretty === true || nodeEnv !== 'production';
 
-  const logger = pino({
-    level,
+	const logger = pino({
+		level,
 
-    serializers: {
-      err: pino.stdSerializers.err,
-    },
+		serializers: {
+			err: pino.stdSerializers.err,
+		},
 
-    timestamp: pino.stdTimeFunctions.isoTime,
+		timestamp: pino.stdTimeFunctions.isoTime,
 
-    ...(prettyEnabled
-      ? {
-          transport: {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              levelFirst: true,
-              singleLine: false,
-              ignore: "pid,hostname",
-              errorLikeObjectKeys: ["err", "error"],
-              translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l",
-            },
-          },
-        }
-      : {}),
-  });
+		...(prettyEnabled
+			? {
+					transport: {
+						target: 'pino-pretty',
+						options: {
+							colorize: true,
+							levelFirst: true,
+							singleLine: false,
+							ignore: 'pid,hostname',
+							errorLikeObjectKeys: ['err', 'error'],
+							translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+						},
+					},
+				}
+			: {}),
+	});
 
-  return new PinoLoggerAdapter(logger);
+	return new PinoLoggerAdapter(logger);
 }

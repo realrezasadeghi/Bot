@@ -1,32 +1,32 @@
 export enum SyncRunStatus {
-  Running = "RUNNING",
-  Completed = "COMPLETED",
-  Failed = "FAILED",
+	Running = 'RUNNING',
+	Completed = 'COMPLETED',
+	Failed = 'FAILED',
 }
 
 export interface SyncRunStats {
-  levels: number;
-  fields: number;
-  terms: number;
-  programs: number;
-  programOfferings: number;
-  courses: number;
-  instructors: number;
-  courseOfferings: number;
-  meetingPatterns: number;
-  scheduleExceptions: number;
-  occurrencesCreated: number;
-  occurrencesUpdated: number;
-  occurrencesCancelled: number;
-  warnings: number;
+	levels: number;
+	fields: number;
+	terms: number;
+	programs: number;
+	programOfferings: number;
+	courses: number;
+	instructors: number;
+	courseOfferings: number;
+	meetingPatterns: number;
+	scheduleExceptions: number;
+	occurrencesCreated: number;
+	occurrencesUpdated: number;
+	occurrencesCancelled: number;
+	warnings: number;
 }
 
 export interface SyncRun {
-  id: string;
-  sourceKey: string;
-  status: SyncRunStatus;
-  startedAt: Date;
-  finishedAt: Date | null;
-  stats: SyncRunStats | null;
-  errorSummary: string | null;
+	id: string;
+	sourceKey: string;
+	status: SyncRunStatus;
+	startedAt: Date;
+	finishedAt: Date | null;
+	stats: SyncRunStats | null;
+	errorSummary: string | null;
 }
