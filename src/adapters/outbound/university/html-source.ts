@@ -8,6 +8,8 @@ import type {
 	UniversityLevelDto,
 	UniversityProgramDto,
 	UniversityProgramOfferingDto,
+	UniversityScheduleExceptionDto,
+	UniversityTermDto,
 } from '../../../application/dto/university.js';
 import type {
 	UniversityAcademicSource,
@@ -17,33 +19,34 @@ import {
 	normalizeDigits,
 	normalizePersianText,
 } from '../../../domain/shared/digits.js';
-import {
-	ExternalSourceError,
-	ValidationError,
-} from '../../../domain/shared/errors.js';
+import { ExternalSourceError } from '../../../domain/shared/errors.js';
 import { LocalTime } from '../../../domain/shared/local-time.js';
-import { Weekday } from '../../../domain/shared/weekday.js';
+import { parseWeekday, Weekday } from '../../../domain/shared/weekday.js';
 
-const WEEKDAY_FA_TO_ENUM: ReadonlyMap<string, Weekday> = new Map([
-	['شنبه', Weekday.Saturday],
-	['یکشنبه', Weekday.Sunday],
-	['دوشنبه', Weekday.Monday],
-	['سه شنبه', Weekday.Tuesday],
-	['سهشنبه', Weekday.Tuesday],
-	['چهارشنبه', Weekday.Wednesday],
-	['چهار شنبه', Weekday.Wednesday],
-	['پنج شنبه', Weekday.Thursday],
-	['پنجشنبه', Weekday.Thursday],
-	['جمعه', Weekday.Friday],
-]);
+const EXPECTED_HEADERS = [
+	'رديف',
+	'نام درس',
+	'استاد',
+	'برنامه زماني',
+	'زمان امتحان',
+	'مقطع',
+	'ترم',
+	'ظرفيت مانده',
+];
 
-function slugify(input: string): string {
-	return normalizePersianText(normalizeDigits(input))
-		.replace(/[^\w\u0600-\u06FF\s-]/g, '-')
-		.replace(/\s+/g, '-')
-		.replace(/-+/g, '-')
-		.replace(/^-|-$/g, '')
-		.toLowerCase();
+const SCHEDULE_SEGMENT_SEPARATOR = ' **';
+const WEEK_PARITY_EVEN = '(هفته زوج)';
+const WEEK_PARITY_ODD = '(هفته فرد)';
+
+interface ColumnIndex {
+	rowNumber?: number;
+	courseName: number;
+	instructor: number;
+	schedule: number;
+	exam: number;
+	level: number;
+	termCode: number;
+	remainingCapacity: number;
 }
 
 interface ParsedMeetingPattern {
@@ -55,37 +58,89 @@ interface ParsedMeetingPattern {
 	effectiveTo: string | null;
 }
 
-function parseSchedule(scheduleRaw: string): ParsedMeetingPattern[] {
-	const patterns: ParsedMeetingPattern[] = [];
+interface ParsedExam {
+	date: string | null;
+	weekday: string | null;
+	startTime: string | null;
+	endTime: string | null;
+}
 
-	// Multiple schedule patterns are separated by " **"
-	const segments = scheduleRaw.split(' **').filter((s) => s.trim().length > 0);
+interface ParsedRow {
+	rowNumber: string | null;
+	courseName: string;
+	instructors: string[];
+	schedulePatterns: ParsedMeetingPattern[];
+	exam: ParsedExam;
+	level: string | null;
+	termCode: string | null;
+	remainingCapacity: string | null;
+}
+
+function slugify(input: string): string {
+	return normalizePersianText(normalizeDigits(input))
+		.replace(/[^\w\u0600-\u06FF\s-]/g, '-')
+		.replace(/\s+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-|-$/g, '')
+		.toLowerCase();
+}
+
+function tryParseWeekday(faName: string): Weekday | null {
+	try {
+		return parseWeekday(faName);
+	} catch {
+		return null;
+	}
+}
+
+function parseSchedule(scheduleRaw: string): {
+	patterns: ParsedMeetingPattern[];
+	warnings: string[];
+} {
+	const patterns: ParsedMeetingPattern[] = [];
+	const warnings: string[] = [];
+
+	if (!scheduleRaw || scheduleRaw.trim().length === 0) {
+		return { patterns, warnings };
+	}
+
+	const segments = scheduleRaw.split(SCHEDULE_SEGMENT_SEPARATOR);
 
 	for (const segment of segments) {
 		const trimmed = segment.trim();
 		if (!trimmed) continue;
 
-		// Strip week parity markers (effective dates cannot be computed without term bounds)
 		const cleaned = trimmed
-			.replace(/\(هفته\s*زوج\)/, '')
-			.replace(/\(هفته\s*فرد\)/, '')
+			.replace(new RegExp(WEEK_PARITY_EVEN, 'g'), '')
+			.replace(new RegExp(WEEK_PARITY_ODD, 'g'), '')
 			.trim();
 
-		// Identify the weekday at the start of the segment
+		if (!cleaned) {
+			warnings.push(`Schedule segment with only week-parity marker: "${trimmed}"`);
+			continue;
+		}
+
 		let weekday: Weekday | null = null;
 		let rest = cleaned;
-		for (const [faName, dayEnum] of WEEKDAY_FA_TO_ENUM) {
+		for (const [faName] of WEEKDAY_FA_TO_ENUM) {
 			if (cleaned.startsWith(faName)) {
-				weekday = dayEnum;
+				weekday = tryParseWeekday(faName);
 				rest = cleaned.slice(faName.length).trim();
 				break;
 			}
 		}
-		if (weekday === null) continue;
+		if (weekday === null) {
+			warnings.push(`Could not parse weekday from schedule segment: "${trimmed}"`);
+			continue;
+		}
 
-		// Extract the time range: HH:MM - HH:MM
 		const timeMatch = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/.exec(rest);
-		if (!timeMatch) continue;
+		if (!timeMatch) {
+			warnings.push(
+				`Could not parse time range from schedule segment: "${trimmed}"`,
+			);
+			continue;
+		}
 
 		const startTime = LocalTime.fromMinutes(
 			Number(timeMatch[1]) * 60 + Number(timeMatch[2]),
@@ -94,7 +149,6 @@ function parseSchedule(scheduleRaw: string): ParsedMeetingPattern[] {
 			Number(timeMatch[3]) * 60 + Number(timeMatch[4]),
 		);
 
-		// Everything after the time range is the location (strip leading dash)
 		const afterTime = rest.slice(timeMatch[0].length).trim();
 		const locationRaw = afterTime.replace(/^-\s*/, '').trim();
 		const location = locationRaw.length > 0 ? locationRaw : null;
@@ -109,11 +163,27 @@ function parseSchedule(scheduleRaw: string): ParsedMeetingPattern[] {
 		});
 	}
 
-	return patterns;
+	return { patterns, warnings };
 }
 
+// Weekday names used for matching schedule segments, ordered so longer/more
+// specific names are checked first (e.g. "سه شنبه" before "سهشنبه").
+const WEEKDAY_FA_TO_ENUM: ReadonlyArray<[string, Weekday]> = [
+	['سه شنبه', Weekday.Tuesday],
+	['سهشنبه', Weekday.Tuesday],
+	['چهار شنبه', Weekday.Wednesday],
+	['چهارشنبه', Weekday.Wednesday],
+	['پنج شنبه', Weekday.Thursday],
+	['پنجشنبه', Weekday.Thursday],
+	['دوشنبه', Weekday.Monday],
+	['یکشنبه', Weekday.Sunday],
+	['شنبه', Weekday.Saturday],
+	['جمعه', Weekday.Friday],
+];
+
 function parseInstructors(instructorRaw: string): string[] {
-	// Instructors may be separated by " - " and may carry a " (حضوري)" suffix
+	if (!instructorRaw || instructorRaw.trim().length === 0) return [];
+
 	const normalized = normalizePersianText(normalizeDigits(instructorRaw));
 	const parts = normalized.split(/\s*-\s*/);
 	return parts
@@ -121,46 +191,241 @@ function parseInstructors(instructorRaw: string): string[] {
 		.filter((part) => part.length > 0);
 }
 
-interface ParsedRow {
-	courseName: string;
-	instructors: string[];
-	scheduleRaw: string;
-	meetingPatterns: ParsedMeetingPattern[];
-	level: string;
-	termCode: string;
-	remainingCapacity: string;
-}
+function parseExam(examRaw: string): ParsedExam {
+	if (!examRaw || examRaw.trim().length === 0) {
+		return { date: null, weekday: null, startTime: null, endTime: null };
+	}
 
-// biome-ignore lint/suspicious/noExplicitAny: cheerio does not export its element type
-function parseRow($: CheerioAPI, el: any): ParsedRow | null {
-	const $row = $(el);
-	const tds = $row.find('td');
-	if (tds.length < 8) return null;
+	const cleaned = normalizePersianText(normalizeDigits(examRaw)).trim();
 
-	const courseName = $(tds[1]).text().trim();
-	const instructorRaw = $(tds[2]).text().trim();
-	const scheduleRaw = $(tds[3]).text().trim();
-	const level = $(tds[5]).text().trim();
-	const termCode = $(tds[6]).text().trim();
-	const remainingCapacity = $(tds[7]).text().trim();
+	const dateMatch = /(\d{4})[/](\d{1,2})[/](\d{1,2})/.exec(cleaned);
+	const date = dateMatch
+		? `${dateMatch[1]}-${String(dateMatch[2]).padStart(2, '0')}-${String(dateMatch[3]).padStart(2, '0')}`
+		: null;
 
-	if (!courseName) return null;
+	let examWeekday: string | null = null;
+	let examStartTime: string | null = null;
+	let examEndTime: string | null = null;
 
-	const instructors = parseInstructors(instructorRaw);
-	const meetingPatterns = parseSchedule(scheduleRaw);
+	const timeMatch = /(\d{1,2}):(\d{2})\s*تا\s*(\d{1,2}):(\d{2})/.exec(cleaned);
+	if (timeMatch) {
+		examStartTime = `${String(timeMatch[1]).padStart(2, '0')}:${timeMatch[2]}`;
+		examEndTime = `${String(timeMatch[3]).padStart(2, '0')}:${timeMatch[4]}`;
+	}
+
+	const afterDate = cleaned
+		.replace(/پايان ترم\s*/, '')
+		.replace(dateMatch?.[0] ?? '', '')
+		.replace(/-/g, ' ')
+		.replace(/از.*/, '')
+		.trim();
+	if (afterDate) {
+		const candidateWeekday = afterDate.split(/\s+/)[0] ?? '';
+		if (candidateWeekday && tryParseWeekday(candidateWeekday) !== null) {
+			examWeekday = candidateWeekday;
+		}
+	}
 
 	return {
+		date,
+		weekday: examWeekday,
+		startTime: examStartTime,
+		endTime: examEndTime,
+	};
+}
+
+function detectColumnIndices($: CheerioAPI): ColumnIndex | null {
+	let bestHeaders: string[] | null = null;
+	let bestMatchCount = 0;
+
+	$('table').each((_index, tableEl) => {
+		const $table = $(tableEl);
+		const headerRow = $table.find('tr').first();
+		if (headerRow.length === 0) return;
+
+		const headers = headerRow
+			.find('th, td')
+			.map((_thIndex, th) =>
+				normalizePersianText(normalizeDigits($(th).text())).trim(),
+			)
+			.get();
+
+		let matchCount = 0;
+		for (const expected of EXPECTED_HEADERS) {
+			const normalizedExpected = normalizePersianText(
+				normalizeDigits(expected),
+			).trim();
+			if (headers.some((h) => h === normalizedExpected)) {
+				matchCount += 1;
+			}
+		}
+
+		if (matchCount > bestMatchCount && matchCount >= 6) {
+			bestMatchCount = matchCount;
+			bestHeaders = headers;
+		}
+	});
+
+	if (!bestHeaders) return null;
+
+	const headers: string[] = bestHeaders as string[];
+
+	const findHeader = (name: string): number | undefined => {
+		const normalized = normalizePersianText(normalizeDigits(name)).trim();
+		const index = headers.indexOf(normalized);
+		return index === -1 ? undefined : index;
+	};
+
+	const courseNameIdx = findHeader('نام درس');
+	const instructorIdx = findHeader('استاد');
+	const scheduleIdx = findHeader('برنامه زماني');
+	const examIdx = findHeader('زمان امتحان');
+	const levelIdx = findHeader('مقطع');
+	const termCodeIdx = findHeader('ترم');
+	const remainingCapacityIdx = findHeader('ظرفيت مانده');
+
+	if (
+		courseNameIdx === undefined ||
+		instructorIdx === undefined ||
+		scheduleIdx === undefined ||
+		examIdx === undefined ||
+		levelIdx === undefined ||
+		termCodeIdx === undefined ||
+		remainingCapacityIdx === undefined
+	) {
+		return null;
+	}
+
+	return {
+		courseName: courseNameIdx,
+		instructor: instructorIdx,
+		schedule: scheduleIdx,
+		exam: examIdx,
+		level: levelIdx,
+		termCode: termCodeIdx,
+		remainingCapacity: remainingCapacityIdx,
+	};
+}
+
+function parseRow(
+	$: CheerioAPI,
+	// biome-ignore lint/suspicious/noExplicitAny: cheerio does not export its element type
+	el: any,
+	columns: ColumnIndex,
+): ParsedRow | null {
+	const $row = $(el);
+	const tds = $row.find('td');
+
+	const getCellText = (index: number): string => {
+		const cell = tds[index];
+		return cell ? $(cell).text().trim() : '';
+	};
+
+	const rowNumber = getCellText(0) || null;
+	const courseName = getCellText(columns.courseName);
+	if (!courseName) return null;
+
+	const instructorRaw = getCellText(columns.instructor);
+	const scheduleRaw = getCellText(columns.schedule);
+	const examRaw = getCellText(columns.exam);
+	const level = getCellText(columns.level) || null;
+	const termCode = getCellText(columns.termCode) || null;
+	const remainingCapacity = getCellText(columns.remainingCapacity) || null;
+
+	const instructors = parseInstructors(instructorRaw);
+	const { patterns: schedulePatterns } = parseSchedule(scheduleRaw);
+	const exam = parseExam(examRaw);
+
+	return {
+		rowNumber,
 		courseName,
 		instructors,
-		scheduleRaw,
-		meetingPatterns,
+		schedulePatterns,
+		exam,
 		level,
 		termCode,
 		remainingCapacity,
 	};
 }
 
+function isLikelyErrorOrLoginPage($: CheerioAPI): boolean {
+	const title = normalizePersianText(
+		normalizeDigits($('title').first().text()),
+	).toLowerCase();
+	const bodyText = normalizePersianText(
+		normalizeDigits($('body').text()),
+	).toLowerCase();
+
+	const suspiciousTitles = [
+		'login',
+		'ورود',
+		'خطا',
+		'error',
+		'unauthorized',
+		'دسترسی',
+		'ممنوع',
+		'forbidden',
+		'not found',
+		'يافت نشد',
+	];
+	for (const suspicious of suspiciousTitles) {
+		if (title.includes(suspicious)) return true;
+	}
+
+	const hasPasswordInput = $('input[type="password"]').length > 0;
+	const hasViewState = $('input[name="__VIEWSTATE"]').length > 0;
+	const hasLoginButton =
+		$('input[type="submit"], button[type="submit"]').filter((_btnIndex, btn) => {
+			const text = $(btn).text().toLowerCase();
+			return (
+				text.includes('ورود') || text.includes('login') || text.includes('submit')
+			);
+		}).length > 0;
+
+	if (hasPasswordInput && (hasViewState || hasLoginButton)) return true;
+
+	const tables = $('table');
+	if (tables.length === 0 && bodyText.length < 500) {
+		const suspiciousBody = ['خطا', 'error', 'دسترسی', 'unauthorized', 'ممنوع'];
+		if (suspiciousBody.some((s) => bodyText.includes(s))) return true;
+	}
+
+	return false;
+}
+
 export class HTMLUniversitySource implements UniversityAcademicSource {
+	private readonly sourceKey: string;
+	private readonly offerUrl: string;
+	private readonly queryParam: string;
+	private readonly queryR: string;
+	private readonly termCode: string;
+	private readonly viewStateGenerator: string;
+	private readonly gridInfo: string;
+	private readonly chkMain: boolean;
+	private readonly requestTimeoutMs: number;
+
+	constructor(config: {
+		sourceKey: string;
+		offerUrl: string;
+		queryParam: string;
+		queryR: string;
+		termCode: string;
+		viewStateGenerator: string;
+		gridInfo: string;
+		chkMain: boolean;
+		requestTimeoutMs: number;
+	}) {
+		this.sourceKey = config.sourceKey;
+		this.offerUrl = config.offerUrl;
+		this.queryParam = config.queryParam;
+		this.queryR = config.queryR;
+		this.termCode = config.termCode;
+		this.viewStateGenerator = config.viewStateGenerator;
+		this.gridInfo = config.gridInfo;
+		this.chkMain = config.chkMain;
+		this.requestTimeoutMs = config.requestTimeoutMs;
+	}
+
 	async fetchSnapshot(
 		request: UniversitySourceRequest,
 	): Promise<UniversityAcademicSnapshot> {
@@ -168,43 +433,66 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 		return this.parseHtml(html, request);
 	}
 
-	async getHtmlResponse(request: UniversitySourceRequest) {
-		const url = new URL(request.offerUrl);
+	async getHtmlResponse(request: UniversitySourceRequest): Promise<string> {
+		const url = new URL(request.offerUrl || this.offerUrl);
 
-		if (!request.queryParam) {
-			throw new ValidationError('Query param in HTMLUniversitySource is required');
-		}
+		url.searchParams.set(this.queryParam, request.termCode || this.termCode);
+		url.searchParams.set('r', this.queryR);
 
-		if (!request.queryR) {
-			throw new ValidationError('Query r in HTMLUniversitySource is required');
-		}
-
-		url.searchParams.set('param', request.queryParam);
-		url.searchParams.set('r', request.queryR);
-
-		const raw = new URLSearchParams({
-			__VIEWSTATEGENERATOR: request.viewStateGenerator,
-			HiTerm: request.termCode,
+		const body = new URLSearchParams({
+			__VIEWSTATEGENERATOR: this.viewStateGenerator,
+			HiTerm: request.termCode || this.termCode,
 			Name: '',
-			Chk_main: String(request.chkMain),
-			mx_grid_info: request.gridInfo,
-			Term_Drp: request.termCode,
+			Chk_main: String(this.chkMain),
+			mx_grid_info: this.gridInfo,
+			Term_Drp: request.termCode || this.termCode,
 		});
 
-		const response = await fetch(url, {
-			signal: AbortSignal.timeout(request.requestTimeoutMs),
-			body: raw,
-			headers: {
-				accept: 'text/html,application/xhtml+xml',
-				'user-agent': 'academic-scheduling-bot/0.1 (inspection)',
-			},
-		});
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				signal: AbortSignal.timeout(this.requestTimeoutMs),
+				method: 'POST',
+				body,
+				headers: {
+					accept: 'text/html,application/xhtml+xml',
+					'content-type': 'application/x-www-form-urlencoded',
+					'user-agent': 'academic-scheduling-bot/0.1 (inspection)',
+				},
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new ExternalSourceError(`University request failed: ${message}`, true);
+		}
 
 		if (!response.ok) {
-			throw new ExternalSourceError('Error in fetch university response', false);
+			throw new ExternalSourceError(
+				`University endpoint returned HTTP ${response.status}`,
+				response.status >= 500,
+			);
 		}
 
-		return response.text();
+		const contentType = response.headers.get('content-type') ?? '';
+		if (
+			!contentType.includes('text/html') &&
+			!contentType.includes('application/xhtml')
+		) {
+			throw new ExternalSourceError(
+				`University endpoint returned unexpected content type: ${contentType}`,
+				false,
+			);
+		}
+
+		const html = await response.text();
+
+		if (!html || html.trim().length === 0) {
+			throw new ExternalSourceError(
+				'University endpoint returned an empty response',
+				true,
+			);
+		}
+
+		return html;
 	}
 
 	private parseHtml(
@@ -214,42 +502,53 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 		const $ = load(html);
 		const warnings: string[] = [];
 
+		if (isLikelyErrorOrLoginPage($)) {
+			warnings.push('University response appears to be a login or error page');
+			return this.buildIncompleteSnapshot(request, warnings);
+		}
+
+		const columns = detectColumnIndices($);
+		if (!columns) {
+			warnings.push('No course table found in university HTML response');
+			return this.buildIncompleteSnapshot(request, warnings);
+		}
+
 		const rows: ParsedRow[] = [];
-		$('table.mxgrid > tr').each((_, el) => {
-			const parsed = parseRow($, el);
-			if (parsed) rows.push(parsed);
+		let unparsedRowCount = 0;
+
+		$('tr').each((_index, el) => {
+			if (_index === 0) return;
+
+			const parsed = parseRow($, el, columns);
+			if (parsed) {
+				rows.push(parsed);
+			} else {
+				unparsedRowCount += 1;
+			}
 		});
 
 		if (rows.length === 0) {
-			warnings.push('No course rows found in university HTML');
-			return {
-				sourceKey: request.sourceKey,
-				fetchedAt: new Date(),
-				complete: false,
-				term: {
-					externalCode: request.termCode,
-					title: `Term ${request.termCode}`,
-					startsOn: null,
-					endsOn: null,
-					isActive: true,
-				},
-				levels: [],
-				fields: [],
-				programs: [],
-				programOfferings: [],
-				courses: [],
-				instructors: [],
-				courseOfferings: [],
-				scheduleExceptions: [],
-				warnings,
-			};
+			warnings.push(
+				unparsedRowCount > 0
+					? `Found ${unparsedRowCount} table row(s) but none could be parsed`
+					: 'No course rows found in university HTML',
+			);
+			return this.buildIncompleteSnapshot(request, warnings);
+		}
+
+		if (unparsedRowCount > 0) {
+			warnings.push(
+				`${unparsedRowCount} table row(s) could not be parsed and were skipped`,
+			);
 		}
 
 		// --- Derive unique entities ------------------------------------------
 
-		const levels = Array.from(new Set(rows.map((row) => row.level))).filter(
-			Boolean,
-		);
+		const levelSet = new Set<string>();
+		for (const row of rows) {
+			if (row.level) levelSet.add(row.level);
+		}
+		const levels = Array.from(levelSet);
 		const levelEntities: UniversityLevelDto[] = levels.map((levelTitle) => ({
 			externalKey: `level-${slugify(levelTitle)}`,
 			code: slugify(levelTitle),
@@ -257,34 +556,38 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 		}));
 		const levelByTitle = new Map(levelEntities.map((l) => [l.title, l]));
 
-		const terms = Array.from(new Set(rows.map((row) => row.termCode))).filter(
-			Boolean,
-		);
-		const defaultTerm = (request.termCode || terms[0]) ?? '';
-		const term = {
-			externalCode: defaultTerm,
-			title: `Term ${defaultTerm}`,
+		const termSet = new Set<string>();
+		for (const row of rows) {
+			if (row.termCode) termSet.add(row.termCode);
+		}
+		const terms = Array.from(termSet);
+		const resolvedTermCode = request.termCode || terms[0] || this.termCode;
+		const term: UniversityTermDto = {
+			externalCode: resolvedTermCode,
+			title: `Term ${resolvedTermCode}`,
 			startsOn: null,
 			endsOn: null,
 			isActive: true,
 		};
 
-		// One synthetic field and program per level (HTML has no finer hierarchy)
-		const fieldEntities: UniversityFieldDto[] = levelEntities.map((level) => ({
-			externalKey: `field-${level.externalKey}`,
-			levelExternalKey: level.externalKey,
-			code: level.code,
-			title: level.title,
-		}));
-		const programEntities: UniversityProgramDto[] = levelEntities.map(
-			(level) => ({
-				externalKey: `program-${level.externalKey}`,
+		const fieldEntities: UniversityFieldDto[] = [];
+		const programEntities: UniversityProgramDto[] = [];
+		for (const level of levelEntities) {
+			const fieldKey = `field-${level.externalKey}`;
+			fieldEntities.push({
+				externalKey: fieldKey,
 				levelExternalKey: level.externalKey,
-				fieldExternalKey: level.externalKey,
 				code: level.code,
 				title: level.title,
-			}),
-		);
+			});
+			programEntities.push({
+				externalKey: `program-${level.externalKey}`,
+				levelExternalKey: level.externalKey,
+				fieldExternalKey: fieldKey,
+				code: level.code,
+				title: level.title,
+			});
+		}
 		const programByLevel = new Map(
 			programEntities.map((p) => [p.levelExternalKey, p]),
 		);
@@ -310,7 +613,6 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			]),
 		);
 
-		// Unique courses by name
 		const courseEntities: UniversityCourseDto[] = [];
 		const courseByName = new Map<string, UniversityCourseDto>();
 		for (const row of rows) {
@@ -326,7 +628,6 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			courseByName.set(row.courseName, course);
 		}
 
-		// Unique instructors
 		const instructorEntities: UniversityInstructorDto[] = [];
 		const instructorByName = new Map<string, UniversityInstructorDto>();
 		for (const row of rows) {
@@ -342,9 +643,9 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			}
 		}
 
-		// --- Build course offerings ------------------------------------------
-
 		const courseOfferings: UniversityCourseOfferingDto[] = [];
+		const scheduleExceptions: UniversityScheduleExceptionDto[] = [];
+
 		for (const row of rows) {
 			const course = courseByName.get(row.courseName);
 			if (!course) {
@@ -352,27 +653,29 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 				continue;
 			}
 
-			const level = levelByTitle.get(row.level);
+			const level = row.level ? levelByTitle.get(row.level) : undefined;
 			const program = level ? programByLevel.get(level.externalKey) : undefined;
 			const programOffering = program
-				? poByProgramAndTerm.get(`${program.externalKey}|${row.termCode}`)
+				? poByProgramAndTerm.get(
+						`${program.externalKey}|${row.termCode ?? resolvedTermCode}`,
+					)
 				: undefined;
 
 			const instructorExternalKeys = row.instructors
 				.map((name) => instructorByName.get(name)?.externalKey ?? '')
 				.filter(Boolean);
 
-			const sectionCode = row.remainingCapacity || null;
+			const sectionCode = row.remainingCapacity ?? null;
 
-			courseOfferings.push({
-				externalKey: `co-${course.externalKey}-${row.termCode}-${courseOfferings.length + 1}`,
+			const offering: UniversityCourseOfferingDto = {
+				externalKey: `co-${course.externalKey}-${row.termCode ?? resolvedTermCode}-${slugify(row.courseName)}-${courseOfferings.length + 1}`,
 				courseExternalKey: course.externalKey,
-				termExternalCode: row.termCode,
+				termExternalCode: row.termCode ?? resolvedTermCode,
 				programOfferingExternalKey: programOffering?.externalKey ?? null,
 				sectionCode,
 				instructorExternalKeys,
 				location: null,
-				meetingPatterns: row.meetingPatterns.map((pattern, _index) => ({
+				meetingPatterns: row.schedulePatterns.map((pattern) => ({
 					weekday: pattern.weekday,
 					startTime: pattern.startTime,
 					endTime: pattern.endTime,
@@ -380,13 +683,28 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 					effectiveFrom: pattern.effectiveFrom,
 					effectiveTo: pattern.effectiveTo,
 				})),
-			});
+			};
+			courseOfferings.push(offering);
+
+			if (row.exam.date) {
+				scheduleExceptions.push({
+					externalKey: null,
+					courseOfferingExternalKey: offering.externalKey,
+					meetingPatternIndex: null,
+					date: row.exam.date,
+					type: 'TIME_CHANGED',
+					newStartTime: row.exam.startTime ?? null,
+					newEndTime: row.exam.endTime ?? null,
+					newLocation: null,
+					reason: `Exam scheduled for ${row.exam.date}${row.exam.weekday ? ` (${row.exam.weekday})` : ''}`,
+				});
+			}
 		}
 
-		const complete = rows.length > 0 && courseOfferings.length > 0;
+		const complete = unparsedRowCount === 0 && courseOfferings.length > 0;
 
 		return {
-			sourceKey: request.sourceKey,
+			sourceKey: request.sourceKey || this.sourceKey,
 			fetchedAt: new Date(),
 			complete,
 			term,
@@ -397,6 +715,33 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			courses: courseEntities,
 			instructors: instructorEntities,
 			courseOfferings,
+			scheduleExceptions,
+			warnings,
+		};
+	}
+
+	private buildIncompleteSnapshot(
+		request: UniversitySourceRequest,
+		warnings: string[],
+	): UniversityAcademicSnapshot {
+		return {
+			sourceKey: request.sourceKey || this.sourceKey,
+			fetchedAt: new Date(),
+			complete: false,
+			term: {
+				externalCode: request.termCode ?? this.termCode,
+				title: `Term ${request.termCode ?? this.termCode}`,
+				startsOn: null,
+				endsOn: null,
+				isActive: true,
+			},
+			levels: [],
+			fields: [],
+			programs: [],
+			programOfferings: [],
+			courses: [],
+			instructors: [],
+			courseOfferings: [],
 			scheduleExceptions: [],
 			warnings,
 		};

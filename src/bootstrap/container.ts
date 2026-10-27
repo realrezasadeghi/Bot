@@ -7,6 +7,7 @@ import { SystemClock } from '../adapters/outbound/system/clock.js';
 import { UuidGenerator } from '../adapters/outbound/system/id-generator.js';
 import { createLogger } from '../adapters/outbound/system/logger.js';
 import { FixtureUniversitySource } from '../adapters/outbound/university/fixture-source.js';
+import { HTMLUniversitySource } from '../adapters/outbound/university/html-source.js';
 import { UnavailableUniversitySource } from '../adapters/outbound/university/unavailable-source.js';
 import type { Logger } from '../application/ports/outbound/logger.js';
 import type { MessagingPort } from '../application/ports/outbound/messaging.js';
@@ -69,6 +70,19 @@ export interface AppContainer {
 function createUniversitySource(config: AppConfig): UniversityAcademicSource {
 	if (config.university.fixturePath) {
 		return new FixtureUniversitySource(config.university.fixturePath);
+	}
+	if (config.university.queryParam && config.university.queryR) {
+		return new HTMLUniversitySource({
+			sourceKey: config.university.sourceKey,
+			offerUrl: config.university.offerUrl,
+			queryParam: config.university.queryParam,
+			queryR: config.university.queryR,
+			termCode: config.university.termCode,
+			viewStateGenerator: config.university.viewStateGenerator,
+			gridInfo: config.university.gridInfo,
+			chkMain: config.university.chkMain,
+			requestTimeoutMs: config.university.requestTimeoutMs,
+		});
 	}
 	return new UnavailableUniversitySource();
 }
