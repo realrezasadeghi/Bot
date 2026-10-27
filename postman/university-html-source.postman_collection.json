@@ -65,9 +65,7 @@
 				},
 				"url": {
 					"raw": "{{offerUrl}}?{{queryParam}}={{termCode}}&r={{queryR}}",
-					"host": [
-						"{{offerUrl}}"
-					],
+					"host": ["{{offerUrl}}"],
 					"query": [
 						{
 							"key": "{{queryParam}}",
@@ -208,9 +206,7 @@
 				],
 				"url": {
 					"raw": "{{offerUrl}}?{{queryParam}}={{termCode}}&r={{queryR}}",
-					"host": [
-						"{{offerUrl}}"
-					],
+					"host": ["{{offerUrl}}"],
 					"query": [
 						{
 							"key": "{{queryParam}}",

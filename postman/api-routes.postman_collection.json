@@ -1,0 +1,534 @@
+{
+	"info": {
+		"name": "Academic Scheduling Bot - API Routes",
+		"_postman_id": "academic-scheduling-bot-api-routes",
+		"description": "Postman collection for all HTTP API routes exposed by the academic-scheduling-bot Express application.\n\nRoutes:\n- GET /health - Health check\n- POST /webhooks/telegram - Telegram webhook (secret auth)\n- POST /webhooks/bale - Bale webhook (secret auth)\n- POST /admin/sync - Sync academic term (Bearer auth)\n- POST /admin/occurrences - Generate class occurrences (Bearer auth)\n- POST /admin/notifications/schedule - Schedule notifications (Bearer auth)\n- POST /admin/notifications/dispatch - Dispatch due notifications (Bearer auth)\n- GET /admin/sync-runs/latest - Get latest sync run (Bearer auth)\n\nAuthentication:\n- Admin routes require: Authorization: Bearer {{adminApiToken}}\n- Telegram webhook requires: x-telegram-bot-api-secret-token: {{telegramWebhookSecret}}\n- Bale webhook requires: x-webhook-secret: {{baleWebhookSecret}}\n\nBase URL: {{baseUrl}} (e.g. http://localhost:3000)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "GET /health",
+					"description": "Health check endpoint. Verifies the database connection is working by querying academic levels.\n\nReturns 200 with { status: 'ok' } when healthy.\nReturns 500 when database is unreachable.",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has status ok', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data.status).to.equal('ok');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Webhooks",
+			"item": [
+				{
+					"name": "POST /webhooks/telegram - Text Message",
+					"description": "Telegram webhook endpoint. Receives updates from Telegram and processes them through the bot.\n\nAuth: Requires `x-telegram-bot-api-secret-token` header matching `TELEGRAM_WEBHOOK_SECRET`.\n\nBody: Telegram update object (message or callback_query).\n\nResponses:\n- 200 { ok: true } - Event processed successfully\n- 200 { ok: true, ignored: true } - Event had no actionable content\n- 401 { error: { code: 'UNAUTHORIZED' } } - Invalid or missing secret token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-telegram-bot-api-secret-token",
+								"value": "{{telegramWebhookSecret}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 10,\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\",\n      \"language_code\": \"fa\"\n    },\n    \"chat\": {\n      \"id\": 123456789,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1730000000\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/webhooks/telegram",
+							"host": ["{{baseUrl}}"],
+							"path": ["webhooks", "telegram"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has ok field', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data).to.have.property('ok');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /webhooks/telegram - Callback Query",
+					"description": "Telegram webhook with a callback query (inline button press).\n\nAuth: Requires `x-telegram-bot-api-secret-token` header.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-telegram-bot-api-secret-token",
+								"value": "{{telegramWebhookSecret}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"update_id\": 123456790,\n  \"callback_query\": {\n    \"id\": \"callback-123\",\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\"\n    },\n    \"message\": {\n      \"message_id\": 11,\n      \"chat\": {\n        \"id\": 123456789,\n        \"type\": \"private\"\n      }\n    },\n    \"data\": \"pref:time:07:30\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/webhooks/telegram",
+							"host": ["{{baseUrl}}"],
+							"path": ["webhooks", "telegram"]
+						}
+					}
+				},
+				{
+					"name": "POST /webhooks/telegram - Invalid Secret (401)",
+					"description": "Verify that an invalid or missing secret token returns 401.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-telegram-bot-api-secret-token",
+								"value": "wrong-secret",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"update_id\": 1,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": { \"id\": 1, \"first_name\": \"Test\" },\n    \"chat\": { \"id\": 1, \"type\": \"private\" },\n    \"text\": \"/start\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/webhooks/telegram",
+							"host": ["{{baseUrl}}"],
+							"path": ["webhooks", "telegram"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"  pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test('Error code is UNAUTHORIZED', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data.error.code).to.equal('UNAUTHORIZED');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /webhooks/bale - Text Message",
+					"description": "Bale webhook endpoint. Receives updates from Bale messenger.\n\nAuth: Requires `x-webhook-secret` header matching `BALE_WEBHOOK_SECRET`.\n\nBody: Bale update object (message or callback_query).",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-webhook-secret",
+								"value": "{{baleWebhookSecret}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 10,\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\",\n      \"language_code\": \"fa\"\n    },\n    \"chat\": {\n      \"id\": 123456789,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1730000000\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/webhooks/bale",
+							"host": ["{{baseUrl}}"],
+							"path": ["webhooks", "bale"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "POST /admin/sync - Sync Academic Term",
+					"description": "Synchronizes academic data from the university portal for a given term.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nFlow:\n1. Fetch snapshot from university source (HTML or fixture)\n2. Persist to database (terms, levels, fields, programs, courses, instructors, offerings, meeting patterns)\n3. Generate class occurrences for the term\n\nBody:\n- termCode (optional): Term code to sync. Defaults to UNIVERSITY_TERM_CODE from env.\n\nResponses:\n- 200 - Sync completed successfully\n- 422 - Snapshot validation failed\n- 502 - University external source error\n- 503 - No university source configured",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"termCode\": \"14051\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/sync",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "sync"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has synchronization result', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data).to.have.property('synchronization');",
+									"  pm.expect(data).to.have.property('termId');",
+									"  pm.expect(data).to.have.property('occurrences');",
+									"  pm.expect(data).to.have.property('warnings');",
+									"  pm.expect(data).to.have.property('complete');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /admin/sync - Missing Admin Token (401)",
+					"description": "Verify that a missing admin token returns 401.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"termCode\": \"14051\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/sync",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "sync"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"  pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /admin/occurrences - Generate Class Occurrences",
+					"description": "Generates class occurrences for a term within a date range.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nBody:\n- termId (required): Database term ID\n- from (optional): Start date (YYYY-MM-DD)\n- to (optional): End date (YYYY-MM-DD)\n- reconcileAbsent (optional): Whether to deactivate absent occurrences (default: false)\n\nResponses:\n- 200 - Occurrences generated\n- 400 - Missing termId",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"termId\": \"term-uuid-here\",\n  \"from\": \"2026-01-01\",\n  \"to\": \"2026-06-30\",\n  \"reconcileAbsent\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/occurrences",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "occurrences"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"  pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /admin/occurrences - Missing termId (400)",
+					"description": "Verify that missing termId returns 400 validation error.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/occurrences",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "occurrences"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 400', function () {",
+									"  pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Error code is VALIDATION_ERROR', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data.error.code).to.equal('VALIDATION_ERROR');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /admin/notifications/schedule - Schedule Notifications",
+					"description": "Schedules class reminders and daily summaries for a user.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nBody:\n- userId (optional): User ID to schedule notifications for\n\nResponses:\n- 200 - Notifications scheduled",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/notifications/schedule",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "notifications", "schedule"]
+						}
+					}
+				},
+				{
+					"name": "POST /admin/notifications/dispatch - Dispatch Due Notifications",
+					"description": "Dispatches all due notification jobs (reminders, daily summaries).\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nNo request body.\n\nResponses:\n- 200 - Notifications dispatched",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/notifications/dispatch",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "notifications", "dispatch"]
+						}
+					}
+				},
+				{
+					"name": "GET /admin/sync-runs/latest - Latest Sync Run",
+					"description": "Retrieves the latest sync run for a source.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nQuery:\n- sourceKey (optional): Source key. Defaults to UNIVERSITY_SOURCE_KEY from env.\n\nResponses:\n- 200 - Latest sync run details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminApiToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/sync-runs/latest?sourceKey=eqbal-portal",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "sync-runs", "latest"],
+							"query": [
+								{
+									"key": "sourceKey",
+									"value": "eqbal-portal"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has syncRun field', function () {",
+									"  const data = pm.response.json();",
+									"  pm.expect(data).to.have.property('syncRun');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string",
+			"description": "Base URL of the running API (PORT from env, default 3000)"
+		},
+		{
+			"key": "adminApiToken",
+			"value": "",
+			"type": "string",
+			"description": "Admin API token (ADMIN_API_TOKEN from env). Required for /admin/* routes."
+		},
+		{
+			"key": "telegramBotToken",
+			"value": "",
+			"type": "string",
+			"description": "Telegram bot token (TELEGRAM_BOT_TOKEN from env)"
+		},
+		{
+			"key": "telegramBotScope",
+			"value": "telegram-main",
+			"type": "string",
+			"description": "Telegram bot scope (TELEGRAM_BOT_SCOPE from env)"
+		},
+		{
+			"key": "telegramWebhookSecret",
+			"value": "",
+			"type": "string",
+			"description": "Telegram webhook secret (TELEGRAM_WEBHOOK_SECRET from env)"
+		},
+		{
+			"key": "baleBotToken",
+			"value": "",
+			"type": "string",
+			"description": "Bale bot token (BALE_BOT_TOKEN from env)"
+		},
+		{
+			"key": "baleBotScope",
+			"value": "bale-main",
+			"type": "string",
+			"description": "Bale bot scope (BALE_BOT_SCOPE from env)"
+		},
+		{
+			"key": "baleWebhookSecret",
+			"value": "",
+			"type": "string",
+			"description": "Bale webhook secret (BALE_WEBHOOK_SECRET from env)"
+		}
+	],
+	"profile": null,
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('[Academic Scheduling Bot API] Base URL: {{baseUrl}}');"
+				]
+			}
+		}
+	]
+}
