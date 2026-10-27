@@ -7,6 +7,9 @@ import type { AppDatabase } from './db.js';
 import { PostgresExternalIdentifierRepository } from './external-identifier-repository.js';
 import { PostgresNotificationJobRepository } from './notification-job-repository.js';
 import { PostgresClassOccurrenceRepository } from './occurrence-repository.js';
+import { PostgresStudentSelectionRepository } from './student-selection-repository.js';
+import { PostgresStudyFieldOfferingMappingRepository } from './study-field-offering-mapping-repository.js';
+import { PostgresStudyFieldRepository } from './study-field-repository.js';
 import { PostgresSubscriptionRepository } from './subscription-repository.js';
 import { PostgresSyncRunRepository } from './sync-run-repository.js';
 import { PostgresUserRepository } from './user-repository.js';
@@ -17,6 +20,11 @@ export function createRepositories(db: AppDatabase): Repositories {
 		externalIds: new PostgresExternalIdentifierRepository(db),
 		users: new PostgresUserRepository(db),
 		subscriptions: new PostgresSubscriptionRepository(db),
+		studentSelections: new PostgresStudentSelectionRepository(db),
+		studyFields: new PostgresStudyFieldRepository(db),
+		studyFieldOfferingMappings: new PostgresStudyFieldOfferingMappingRepository(
+			db,
+		),
 		occurrences: new PostgresClassOccurrenceRepository(db),
 		jobs: new PostgresNotificationJobRepository(db),
 		syncRuns: new PostgresSyncRunRepository(db),

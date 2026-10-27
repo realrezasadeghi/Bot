@@ -2,6 +2,9 @@ import { PlatformMessagingRouter } from '../adapters/outbound/messaging/platform
 import { TelegramCompatibleMessagingAdapter } from '../adapters/outbound/messaging/telegram-compatible.js';
 import { PostgresConversationStateStore } from '../adapters/outbound/persistence/postgres/conversation-state-store.js';
 import { createPostgresConnection } from '../adapters/outbound/persistence/postgres/db.js';
+import { PostgresStudentSelectionRepository } from '../adapters/outbound/persistence/postgres/student-selection-repository.js';
+import { PostgresStudyFieldOfferingMappingRepository } from '../adapters/outbound/persistence/postgres/study-field-offering-mapping-repository.js';
+import { PostgresStudyFieldRepository } from '../adapters/outbound/persistence/postgres/study-field-repository.js';
 import { PostgresUnitOfWork } from '../adapters/outbound/persistence/postgres/unit-of-work.js';
 import { SystemClock } from '../adapters/outbound/system/clock.js';
 import { UuidGenerator } from '../adapters/outbound/system/id-generator.js';
@@ -11,15 +14,23 @@ import { HTMLUniversitySource } from '../adapters/outbound/university/html-sourc
 import { UnavailableUniversitySource } from '../adapters/outbound/university/unavailable-source.js';
 import type { Logger } from '../application/ports/outbound/logger.js';
 import type { MessagingPort } from '../application/ports/outbound/messaging.js';
+import type { StudentSelectionRepository } from '../application/ports/outbound/student-selection-repository.js';
+import type { StudyFieldOfferingMappingRepository } from '../application/ports/outbound/study-field-offering-mapping-repository.js';
+import type { StudyFieldRepository } from '../application/ports/outbound/study-field-repository.js';
 import type { UniversityAcademicSource } from '../application/ports/outbound/university-source.js';
 import {
 	GetAvailableFields,
 	GetAvailableLevels,
 	GetAvailablePrograms,
 } from '../application/use-cases/academic/get-academic-options.js';
+import { GetAvailableCourseOfferings } from '../application/use-cases/academic/get-available-course-offerings.js';
 import { GetAvailableTerms } from '../application/use-cases/academic/get-available-terms.js';
+import { GetStudentTimetable } from '../application/use-cases/academic/get-student-timetable.js';
+import { GetStudyFields } from '../application/use-cases/academic/get-study-fields.js';
 import { ImportUniversityAcademicData } from '../application/use-cases/academic/import-university-academic-data.js';
+import { SaveStudentCourseSelection } from '../application/use-cases/academic/save-student-course-selection.js';
 import { SynchronizeAcademicData } from '../application/use-cases/academic/synchronize-academic-data.js';
+import { UpdateStudentCourseSelection } from '../application/use-cases/academic/update-student-course-selection.js';
 import { RegisterOrResolveUser } from '../application/use-cases/identity/register-or-resolve-user.js';
 import { HandleIncomingPlatformMessage } from '../application/use-cases/messaging/handle-incoming-platform-message.js';
 import { DispatchDueNotifications } from '../application/use-cases/notifications/dispatch-due-notifications.js';
@@ -57,6 +68,14 @@ export interface AppContainer {
 	messaging: PlatformMessagingRouter;
 	configuredPlatforms: ReadonlySet<PlatformCode>;
 	universitySource: UniversityAcademicSource;
+	studyFields: StudyFieldRepository;
+	studyFieldOfferingMappings: StudyFieldOfferingMappingRepository;
+	studentSelections: StudentSelectionRepository;
+	getStudyFields: GetStudyFields;
+	getAvailableCourseOfferings: GetAvailableCourseOfferings;
+	saveStudentCourseSelection: SaveStudentCourseSelection;
+	getStudentTimetable: GetStudentTimetable;
+	updateStudentCourseSelection: UpdateStudentCourseSelection;
 	handleIncoming: HandleIncomingPlatformMessage;
 	dispatchNotifications: DispatchDueNotifications;
 	scheduleClassReminders: ScheduleClassReminders;
@@ -238,6 +257,28 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		clock,
 		logger,
 	});
+	const studyFields = new PostgresStudyFieldRepository(connection.db);
+	const studyFieldOfferingMappings =
+		new PostgresStudyFieldOfferingMappingRepository(connection.db);
+	const studentSelections = new PostgresStudentSelectionRepository(
+		connection.db,
+	);
+	const getStudyFields = new GetStudyFields(uow);
+	const getAvailableCourseOfferings = new GetAvailableCourseOfferings(uow);
+	const saveStudentCourseSelection = new SaveStudentCourseSelection({
+		uow,
+		ids,
+		clock,
+	});
+	const getStudentTimetable = new GetStudentTimetable({
+		uow,
+		clock,
+	});
+	const updateStudentCourseSelection = new UpdateStudentCourseSelection({
+		uow,
+		ids,
+		clock,
+	});
 
 	return {
 		config,
@@ -249,6 +290,14 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		messaging,
 		configuredPlatforms: new Set(adapters.keys()),
 		universitySource,
+		studyFields,
+		studyFieldOfferingMappings,
+		studentSelections,
+		getStudyFields,
+		getAvailableCourseOfferings,
+		saveStudentCourseSelection,
+		getStudentTimetable,
+		updateStudentCourseSelection,
 		handleIncoming,
 		dispatchNotifications,
 		scheduleClassReminders,

@@ -3,6 +3,7 @@ import { ConflictError, ValidationError } from '../shared/errors.js';
 export enum NotificationType {
 	DailySummary = 'DAILY_SUMMARY',
 	ClassReminder = 'CLASS_REMINDER',
+	ExamReminder = 'EXAM_REMINDER',
 }
 
 export enum NotificationJobStatus {

@@ -38,6 +38,7 @@ export const classOccurrenceStatusEnum = pgEnum('class_occurrence_status', [
 export const notificationTypeEnum = pgEnum('notification_type', [
 	'DAILY_SUMMARY',
 	'CLASS_REMINDER',
+	'EXAM_REMINDER',
 ]);
 export const notificationJobStatusEnum = pgEnum('notification_job_status', [
 	'PENDING',
@@ -66,6 +67,7 @@ export const externalEntityTypeEnum = pgEnum('external_entity_type', [
 	'COURSE_OFFERING',
 	'MEETING_PATTERN',
 	'SCHEDULE_EXCEPTION',
+	'STUDY_FIELD',
 ]);
 
 const timestamps = {
@@ -655,6 +657,117 @@ export const conversationStates = pgTable(
 	],
 );
 
+/**
+ * Application-defined academic fields (independent of university source data).
+ * These are managed by our application, not imported from the university portal.
+ */
+export const studyFields = pgTable(
+	'study_fields',
+	{
+		id: uuid('id').primaryKey(),
+		name: text('name').notNull(),
+		code: text('code').notNull(),
+		description: text('description'),
+		academicLevelId: uuid('academic_level_id')
+			.notNull()
+			.references(() => academicLevels.id, { onDelete: 'restrict' }),
+		isActive: boolean('is_active').notNull().default(true),
+		sortOrder: smallint('sort_order').notNull().default(0),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('study_fields_code_uq').on(table.code),
+		index('study_fields_level_idx').on(table.academicLevelId),
+		index('study_fields_active_idx').on(table.isActive),
+	],
+);
+
+/**
+ * Maps application-defined study fields to imported course offerings.
+ * Uses external keys to reference university-imported records without
+ * duplicating course/instructor data.
+ */
+export const studyFieldOfferingMappings = pgTable(
+	'study_field_offering_mappings',
+	{
+		id: uuid('id').primaryKey(),
+		studyFieldId: uuid('study_field_id')
+			.notNull()
+			.references(() => studyFields.id, { onDelete: 'cascade' }),
+		courseOfferingExternalKey: text('course_offering_external_key').notNull(),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('study_field_offering_mappings_uq').on(
+			table.studyFieldId,
+			table.courseOfferingExternalKey,
+		),
+		index('study_field_offering_mappings_field_idx').on(table.studyFieldId),
+		index('study_field_offering_mappings_offering_idx').on(
+			table.courseOfferingExternalKey,
+		),
+	],
+);
+
+/**
+ * Student's academic selection: level, field, and term.
+ * One active selection per user at a time.
+ */
+export const studentAcademicSelections = pgTable(
+	'student_academic_selections',
+	{
+		id: uuid('id').primaryKey(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		academicLevelId: uuid('academic_level_id').references(
+			() => academicLevels.id,
+			{ onDelete: 'set null' },
+		),
+		studyFieldId: uuid('study_field_id').references(() => studyFields.id, {
+			onDelete: 'set null',
+		}),
+		academicTermId: uuid('academic_term_id').references(() => academicTerms.id, {
+			onDelete: 'set null',
+		}),
+		isActive: boolean('is_active').notNull().default(true),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('student_academic_selections_active_uq')
+			.on(table.userId)
+			.where(sql`${table.isActive} = true`),
+		index('student_academic_selections_user_idx').on(table.userId),
+	],
+);
+
+/**
+ * Student's selected course offerings within their academic selection.
+ */
+export const studentSelectedOfferings = pgTable(
+	'student_selected_offerings',
+	{
+		id: uuid('id').primaryKey(),
+		selectionId: uuid('selection_id')
+			.notNull()
+			.references(() => studentAcademicSelections.id, {
+				onDelete: 'cascade',
+			}),
+		courseOfferingId: uuid('course_offering_id')
+			.notNull()
+			.references(() => courseOfferings.id, { onDelete: 'cascade' }),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('student_selected_offerings_uq').on(
+			table.selectionId,
+			table.courseOfferingId,
+		),
+		index('student_selected_offerings_selection_idx').on(table.selectionId),
+		index('student_selected_offerings_offering_idx').on(table.courseOfferingId),
+	],
+);
+
 export type DatabaseSchema = {
 	academicLevels: typeof academicLevels;
 	fieldsOfStudy: typeof fieldsOfStudy;
@@ -678,4 +791,8 @@ export type DatabaseSchema = {
 	syncRuns: typeof syncRuns;
 	externalIdentifiers: typeof externalIdentifiers;
 	conversationStates: typeof conversationStates;
+	studyFields: typeof studyFields;
+	studyFieldOfferingMappings: typeof studyFieldOfferingMappings;
+	studentAcademicSelections: typeof studentAcademicSelections;
+	studentSelectedOfferings: typeof studentSelectedOfferings;
 };
