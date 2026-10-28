@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .biome/
+.codebase-memory/
 .env
 .env.*
 !.env.example
