@@ -1,3 +1,18 @@
+import type {
+	OutboundMessage,
+	OutboundRecipient,
+} from '../../../application/dto/messaging.js';
+import type {
+	CourseOfferingView,
+	ExaminationEntryDto,
+} from '../../../application/dto/read-models.js';
+import type {
+	DailyScheduleDto,
+	ProgramSummaryDto,
+	SubscriptionDto,
+	WeeklyScheduleDto,
+} from '../../../application/dto/schedule.js';
+import type { BotRenderer } from '../../../application/ports/outbound/bot-renderer.js';
 import {
 	type BotContent,
 	renderCourseOfferings,
@@ -11,30 +26,30 @@ import {
 	renderProgramCourses,
 	renderPrograms,
 	renderStudentPreferences,
+	renderStudyFields,
+	renderStudyLevels,
+	renderStudyTerms,
 	renderSubscription,
 	renderTerms,
 	renderUnresolvedProgramGrouping,
 	renderWeeklySchedule,
 	renderWelcome,
 } from '../../../application/services/bot-messages.js';
-import type { OutboundMessage, OutboundRecipient } from '../../../application/dto/messaging.js';
-import type {
-	DailyScheduleDto,
-	ProgramSummaryDto,
-	SubscriptionDto,
-	WeeklyScheduleDto,
-} from '../../../application/dto/schedule.js';
-import type { ExaminationEntryDto, CourseOfferingView } from '../../../application/dto/read-models.js';
+import type { ProgramCoursesDto } from '../../../application/use-cases/subscriptions/get-subscription.js';
 import type {
 	AcademicLevel,
 	AcademicTerm,
 	FieldOfStudy,
 } from '../../../domain/academic/entities.js';
-import type { UserAcademicSelection } from '../../../domain/academic/study-field.js';
-import type { ProgramCoursesDto } from '../../../application/use-cases/subscriptions/get-subscription.js';
-import type { BotRenderer } from '../../../application/ports/outbound/bot-renderer.js';
+import type {
+	StudyField,
+	UserAcademicSelection,
+} from '../../../domain/academic/study-field.js';
 
-function toMessage(content: BotContent, recipient: OutboundRecipient): OutboundMessage {
+function toMessage(
+	content: BotContent,
+	recipient: OutboundRecipient,
+): OutboundMessage {
 	return {
 		recipient,
 		text: content.text,
@@ -55,11 +70,17 @@ export class DefaultBotRenderer implements BotRenderer {
 		return toMessage(renderHelp(), recipient);
 	}
 
-	dailySchedule(schedule: DailyScheduleDto, recipient: OutboundRecipient): OutboundMessage {
+	dailySchedule(
+		schedule: DailyScheduleDto,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderDailySchedule(schedule), recipient);
 	}
 
-	weeklySchedule(schedule: WeeklyScheduleDto, recipient: OutboundRecipient): OutboundMessage {
+	weeklySchedule(
+		schedule: WeeklyScheduleDto,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderWeeklySchedule(schedule), recipient);
 	}
 
@@ -77,7 +98,10 @@ export class DefaultBotRenderer implements BotRenderer {
 		return toMessage(renderSubscription(subscription), recipient);
 	}
 
-	preferences(subscription: SubscriptionDto, recipient: OutboundRecipient): OutboundMessage {
+	preferences(
+		subscription: SubscriptionDto,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderPreferences(subscription), recipient);
 	}
 
@@ -88,15 +112,45 @@ export class DefaultBotRenderer implements BotRenderer {
 		return toMessage(renderStudentPreferences(selection), recipient);
 	}
 
-	fields(fields: ReadonlyArray<FieldOfStudy>, recipient: OutboundRecipient): OutboundMessage {
+	fields(
+		fields: ReadonlyArray<FieldOfStudy>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderFields(fields), recipient);
 	}
 
-	levels(levels: ReadonlyArray<AcademicLevel>, recipient: OutboundRecipient): OutboundMessage {
+	levels(
+		levels: ReadonlyArray<AcademicLevel>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderLevels(levels), recipient);
 	}
 
-	terms(terms: ReadonlyArray<AcademicTerm>, recipient: OutboundRecipient): OutboundMessage {
+	studyLevels(
+		levels: ReadonlyArray<AcademicLevel>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
+		return toMessage(renderStudyLevels(levels), recipient);
+	}
+
+	studyFields(
+		fields: ReadonlyArray<StudyField>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
+		return toMessage(renderStudyFields(fields), recipient);
+	}
+
+	studyTerms(
+		terms: ReadonlyArray<AcademicTerm>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
+		return toMessage(renderStudyTerms(terms), recipient);
+	}
+
+	terms(
+		terms: ReadonlyArray<AcademicTerm>,
+		recipient: OutboundRecipient,
+	): OutboundMessage {
 		return toMessage(renderTerms(terms), recipient);
 	}
 
@@ -112,7 +166,10 @@ export class DefaultBotRenderer implements BotRenderer {
 		selectedCourseOfferingIds: ReadonlySet<string>,
 		recipient: OutboundRecipient,
 	): OutboundMessage {
-		return toMessage(renderCourseOfferings(offerings, selectedCourseOfferingIds), recipient);
+		return toMessage(
+			renderCourseOfferings(offerings, selectedCourseOfferingIds),
+			recipient,
+		);
 	}
 
 	programCourses(

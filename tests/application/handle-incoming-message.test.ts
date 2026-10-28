@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { IncomingPlatformEvent } from '../../src/application/dto/incoming.js';
 import type { SubscriptionDto } from '../../src/application/dto/schedule.js';
-import {
-	HandleIncomingPlatformMessage,
-	type IncomingMessageDependencies,
-} from '../../src/application/use-cases/messaging/handle-incoming-platform-message.js';
+import type { BotRenderer } from '../../src/application/ports/outbound/bot-renderer.js';
+import { HandleIncomingPlatformMessage } from '../../src/application/use-cases/messaging/handle-incoming-platform-message.js';
+import type { IncomingMessageDependencies } from '../../src/application/use-cases/messaging/handlers/handler-deps.js';
 import type { NotificationPreferenceChanges } from '../../src/application/use-cases/subscriptions/update-notification-preferences.js';
 import { PlatformCode } from '../../src/domain/identity/platform-identity.js';
 
@@ -75,7 +74,229 @@ describe('HandleIncomingPlatformMessage preference callbacks', () => {
 			},
 		} as unknown as IncomingMessageDependencies;
 
-		const handler = new HandleIncomingPlatformMessage(dependencies);
+		const renderer = {
+			welcome: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			mainMenu: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			help: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			dailySchedule: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			weeklySchedule: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			examinations: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			subscription: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			preferences: (sub: { preferences?: { dailySummaryTime: string } }) => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: `summary time ${sub.preferences?.dailySummaryTime}`,
+				buttons: [],
+			}),
+			studentPreferences: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			fields: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			levels: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			studyLevels: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			studyFields: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			studyTerms: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			terms: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			programs: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			courseOfferings: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			programCourses: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			unresolvedProgramGrouping: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			needSubscription: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			restartFlow: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+			unsubscribeConfirm: () => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+		} as unknown as BotRenderer;
+		const handler = new HandleIncomingPlatformMessage({ dependencies, renderer });
 		const result = await handler.execute(event('pref:time:07:30'));
 
 		expect(captured).toEqual({ dailySummaryTime: '07:30' });
@@ -101,7 +322,22 @@ describe('HandleIncomingPlatformMessage preference callbacks', () => {
 			},
 		} as unknown as IncomingMessageDependencies;
 
-		const handler = new HandleIncomingPlatformMessage(dependencies);
+		const renderer2 = {
+			preferences: (_sub: unknown) => ({
+				recipient: {
+					platform: PlatformCode.Telegram,
+					botScope: '',
+					externalUserId: '1',
+					externalChatId: '1',
+				},
+				text: '',
+				buttons: [],
+			}),
+		} as unknown as BotRenderer;
+		const handler = new HandleIncomingPlatformMessage({
+			dependencies,
+			renderer: renderer2,
+		});
 		await handler.execute(event('pref:toggle:reminder'));
 
 		expect(captured).toEqual({ classReminderEnabled: false });

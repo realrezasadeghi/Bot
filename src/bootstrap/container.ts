@@ -1,3 +1,4 @@
+import { DefaultBotRenderer } from '../adapters/outbound/messaging/bot-renderer.js';
 import { PlatformMessagingRouter } from '../adapters/outbound/messaging/platform-router.js';
 import { TelegramCompatibleMessagingAdapter } from '../adapters/outbound/messaging/telegram-compatible.js';
 import { PostgresConversationStateStore } from '../adapters/outbound/persistence/postgres/conversation-state-store.js';
@@ -218,30 +219,34 @@ export function createAppContainer(config: AppConfig): AppContainer {
 	const updateStudentNotificationPreferences =
 		new UpdateStudentNotificationPreferences({ uow, clock });
 
+	const botRenderer = new DefaultBotRenderer();
 	const handleIncoming = new HandleIncomingPlatformMessage({
-		uow,
-		clock,
-		logger,
-		stateStore,
-		registerOrResolveUser,
-		getAvailableTerms,
-		getAvailableLevels,
-		getAvailableFields,
-		getAvailablePrograms,
-		getDailySchedule,
-		getWeeklySchedule,
-		getUpcomingExaminations,
-		getStudyFields,
-		getAvailableCourseOfferings,
-		saveStudentCourseSelection,
-		updateStudentNotificationPreferences,
-		getCurrentSubscription,
-		getProgramCourses,
-		subscribeToProgram,
-		customizeCourseSelection,
-		followProgramDefault,
-		updateNotificationPreferences,
-		unsubscribeFromProgram,
+		dependencies: {
+			uow,
+			clock,
+			logger,
+			stateStore,
+			registerOrResolveUser,
+			getAvailableTerms,
+			getAvailableLevels,
+			getAvailableFields,
+			getAvailablePrograms,
+			getDailySchedule,
+			getWeeklySchedule,
+			getUpcomingExaminations,
+			getStudyFields,
+			getAvailableCourseOfferings,
+			saveStudentCourseSelection,
+			updateStudentNotificationPreferences,
+			getCurrentSubscription,
+			getProgramCourses,
+			subscribeToProgram,
+			customizeCourseSelection,
+			followProgramDefault,
+			updateNotificationPreferences,
+			unsubscribeFromProgram,
+		},
+		renderer: botRenderer,
 	});
 
 	const dispatchNotifications = new DispatchDueNotifications({
