@@ -176,10 +176,9 @@ export class ScheduleClassReminders {
 				}
 
 				const user = await repositories.users.findUserById(selection.userId);
-				const identity =
-					await repositories.users.findPreferredIdentityForUser(
-						selection.userId,
-					);
+				const identity = await repositories.users.findPreferredIdentityForUser(
+					selection.userId,
+				);
 				if (!user || !identity) {
 					skipped += 1;
 					continue;
@@ -203,9 +202,7 @@ export class ScheduleClassReminders {
 						user.timeZone,
 					);
 					const offsetMinutes = selection.reminderOffsetMinutes;
-					const dueAt = new Date(
-						startInstant.getTime() - offsetMinutes * 60_000,
-					);
+					const dueAt = new Date(startInstant.getTime() - offsetMinutes * 60_000);
 					if (dueAt.getTime() <= now.getTime()) {
 						skipped += 1;
 						continue;

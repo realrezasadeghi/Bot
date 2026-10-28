@@ -290,9 +290,7 @@ export class PostgresNotificationJobRepository
 		return rows.map(toNotificationJob);
 	}
 
-	async listPendingBySelection(
-		selectionId: string,
-	): Promise<NotificationJob[]> {
+	async listPendingBySelection(selectionId: string): Promise<NotificationJob[]> {
 		const rows = await this.db
 			.select()
 			.from(notificationJobs)

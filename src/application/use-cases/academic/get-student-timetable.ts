@@ -42,10 +42,7 @@ export class GetStudentTimetable {
 		return this.deps.uow.run(async (repositories) => {
 			const user = await repositories.users.findUserById(userId);
 			if (!user) return [];
-			const today = LocalDate.fromInstant(
-				this.deps.clock.now(),
-				user.timeZone,
-			);
+			const today = LocalDate.fromInstant(this.deps.clock.now(), user.timeZone);
 			return this.loadWithin(repositories, userId, today, today);
 		});
 	}
@@ -54,26 +51,17 @@ export class GetStudentTimetable {
 		return this.deps.uow.run(async (repositories) => {
 			const user = await repositories.users.findUserById(userId);
 			if (!user) return [];
-			const today = LocalDate.fromInstant(
-				this.deps.clock.now(),
-				user.timeZone,
-			);
+			const today = LocalDate.fromInstant(this.deps.clock.now(), user.timeZone);
 			const start = today.startOfWeekSaturday();
 			return this.loadWithin(repositories, userId, start, start.addDays(6));
 		});
 	}
 
-	async getUpcoming(
-		userId: string,
-		days = 7,
-	): Promise<TimetableEntry[]> {
+	async getUpcoming(userId: string, days = 7): Promise<TimetableEntry[]> {
 		return this.deps.uow.run(async (repositories) => {
 			const user = await repositories.users.findUserById(userId);
 			if (!user) return [];
-			const today = LocalDate.fromInstant(
-				this.deps.clock.now(),
-				user.timeZone,
-			);
+			const today = LocalDate.fromInstant(this.deps.clock.now(), user.timeZone);
 			return this.loadWithin(
 				repositories,
 				userId,
@@ -100,9 +88,7 @@ export class GetStudentTimetable {
 				const date = LocalDate.tryParse(entry.date);
 				const startTime = LocalTime.tryParse(entry.startTime);
 				if (!date || !startTime) continue;
-				if (
-					date.toUtcInstant(startTime, user.timeZone).getTime() > now.getTime()
-				) {
+				if (date.toUtcInstant(startTime, user.timeZone).getTime() > now.getTime()) {
 					return entry;
 				}
 			}
@@ -123,10 +109,7 @@ export class GetStudentTimetable {
 			const user = await repositories.users.findUserById(userId);
 			if (!user) return [];
 
-			const today = LocalDate.fromInstant(
-				this.deps.clock.now(),
-				user.timeZone,
-			);
+			const today = LocalDate.fromInstant(this.deps.clock.now(), user.timeZone);
 			const from = term.startsOn ?? today;
 			const to = term.endsOn ?? from.addDays(180);
 			return this.loadWithin(repositories, userId, from, to);
@@ -164,21 +147,21 @@ export class GetStudentTimetable {
 		);
 
 		return views
-			.map((view): TimetableEntry => ({
-				occurrenceId: view.occurrence.id,
-				courseOfferingId: view.courseOffering.id,
-				courseCode: view.course.code,
-				courseTitle: view.course.title,
-				sectionCode: view.courseOffering.sectionCode,
-				instructorNames: view.instructors.map(
-					(instructor) => instructor.fullName,
-				),
-				date: view.occurrence.date.toString(),
-				startTime: view.occurrence.startTime.toString(),
-				endTime: view.occurrence.endTime.toString(),
-				location: view.occurrence.location,
-				status: view.occurrence.isActive() ? 'SCHEDULED' : 'CANCELLED',
-			}))
+			.map(
+				(view): TimetableEntry => ({
+					occurrenceId: view.occurrence.id,
+					courseOfferingId: view.courseOffering.id,
+					courseCode: view.course.code,
+					courseTitle: view.course.title,
+					sectionCode: view.courseOffering.sectionCode,
+					instructorNames: view.instructors.map((instructor) => instructor.fullName),
+					date: view.occurrence.date.toString(),
+					startTime: view.occurrence.startTime.toString(),
+					endTime: view.occurrence.endTime.toString(),
+					location: view.occurrence.location,
+					status: view.occurrence.isActive() ? 'SCHEDULED' : 'CANCELLED',
+				}),
+			)
 			.sort((left, right) => {
 				const dateCompare = left.date.localeCompare(right.date);
 				if (dateCompare !== 0) return dateCompare;

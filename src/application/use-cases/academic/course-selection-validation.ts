@@ -1,7 +1,13 @@
-import type { AcademicLevel, AcademicTerm } from '../../../domain/academic/entities.js';
-import type { CourseOfferingView } from '../../dto/read-models.js';
-import { NotFoundError, ValidationError } from '../../../domain/shared/errors.js';
+import type {
+	AcademicLevel,
+	AcademicTerm,
+} from '../../../domain/academic/entities.js';
 import type { StudyField } from '../../../domain/academic/study-field.js';
+import {
+	NotFoundError,
+	ValidationError,
+} from '../../../domain/shared/errors.js';
+import type { CourseOfferingView } from '../../dto/read-models.js';
 import type { Repositories } from '../../ports/outbound/unit-of-work.js';
 
 export interface SelectionContext {
@@ -43,7 +49,9 @@ export async function resolveSelectionContext(
 		repositories.academic.listLevels(),
 		repositories.studyFields.listByLevel(input.academicLevelId),
 	]);
-	const level = levels.find((candidate) => candidate.id === input.academicLevelId);
+	const level = levels.find(
+		(candidate) => candidate.id === input.academicLevelId,
+	);
 	if (!level) {
 		throw new NotFoundError(
 			`Academic level ${input.academicLevelId} was not found`,
@@ -51,8 +59,7 @@ export async function resolveSelectionContext(
 	}
 
 	const field = fields.find(
-		(candidate) =>
-			candidate.id === input.studyFieldId && candidate.isActive,
+		(candidate) => candidate.id === input.studyFieldId && candidate.isActive,
 	);
 	if (!field) {
 		throw new NotFoundError(
@@ -108,9 +115,7 @@ export async function validateSelectedOfferings(
 	for (const view of offerings) {
 		const offering = view.courseOffering;
 		if (!offering.isActive) {
-			throw new ValidationError(
-				`Course offering ${offering.id} is not active`,
-			);
+			throw new ValidationError(`Course offering ${offering.id} is not active`);
 		}
 		if (offering.termId !== context.term.id) {
 			throw new ValidationError(

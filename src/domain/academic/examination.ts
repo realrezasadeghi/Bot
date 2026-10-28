@@ -33,9 +33,7 @@ export class CourseExamination {
 			throw new ValidationError('CourseExamination.id is required');
 		}
 		if (!input.courseOfferingId.trim()) {
-			throw new ValidationError(
-				'CourseExamination.courseOfferingId is required',
-			);
+			throw new ValidationError('CourseExamination.courseOfferingId is required');
 		}
 
 		const startTime = input.startTime ?? null;

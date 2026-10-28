@@ -22,8 +22,7 @@ const seeds: StudyFieldMappingSeed[] = parsed.map((value, index) => {
 	if (
 		typeof value !== 'object' ||
 		value === null ||
-		typeof (value as { studyFieldCode?: unknown }).studyFieldCode !==
-			'string' ||
+		typeof (value as { studyFieldCode?: unknown }).studyFieldCode !== 'string' ||
 		!Array.isArray(
 			(value as { courseOfferingExternalKeys?: unknown })
 				.courseOfferingExternalKeys,

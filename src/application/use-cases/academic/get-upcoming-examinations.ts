@@ -31,13 +31,9 @@ export class GetUpcomingExaminations {
 			const term = await repositories.academic.getTermById(
 				selection.academicTermId,
 			);
-			const today = LocalDate.fromInstant(
-				this.deps.clock.now(),
-				user.timeZone,
-			);
+			const today = LocalDate.fromInstant(this.deps.clock.now(), user.timeZone);
 			const from = options.from ?? today;
-			const to =
-				options.to ?? term?.endsOn ?? from.addDays(180);
+			const to = options.to ?? term?.endsOn ?? from.addDays(180);
 
 			const [examinations, offerings] = await Promise.all([
 				repositories.examinations.listUpcomingForCourseOfferingIds(
@@ -63,9 +59,7 @@ export class GetUpcomingExaminations {
 					courseCode: view.course.code,
 					courseTitle: view.course.title,
 					sectionCode: view.courseOffering.sectionCode,
-					instructorNames: view.instructors.map(
-						(instructor) => instructor.fullName,
-					),
+					instructorNames: view.instructors.map((instructor) => instructor.fullName),
 					examDate: examination.examDate.toString(),
 					startTime: examination.startTime?.toString() ?? null,
 					endTime: examination.endTime?.toString() ?? null,

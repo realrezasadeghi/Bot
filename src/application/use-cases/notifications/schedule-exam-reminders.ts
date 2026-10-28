@@ -60,10 +60,9 @@ export class ScheduleExamReminders {
 				}
 
 				const user = await repositories.users.findUserById(selection.userId);
-				const identity =
-					await repositories.users.findPreferredIdentityForUser(
-						selection.userId,
-					);
+				const identity = await repositories.users.findPreferredIdentityForUser(
+					selection.userId,
+				);
 				if (!user || !identity) {
 					skipped += 1;
 					continue;
@@ -92,9 +91,7 @@ export class ScheduleExamReminders {
 					);
 
 					for (const offsetMinutes of this.deps.offsetsMinutes) {
-						const dueAt = new Date(
-							startInstant.getTime() - offsetMinutes * 60_000,
-						);
+						const dueAt = new Date(startInstant.getTime() - offsetMinutes * 60_000);
 						if (dueAt.getTime() <= now.getTime()) {
 							skipped += 1;
 							continue;

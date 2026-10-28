@@ -1,7 +1,5 @@
 import type { ClassOccurrenceStatus } from '../../../../domain/academic/class-occurrence.js';
 import { ClassOccurrence } from '../../../../domain/academic/class-occurrence.js';
-import { CourseExamination } from '../../../../domain/academic/examination.js';
-import type { ExaminationStatus } from '../../../../domain/academic/examination.js';
 import {
 	AcademicLevel,
 	AcademicProgram,
@@ -13,6 +11,8 @@ import {
 	MeetingPattern,
 	ProgramOffering,
 } from '../../../../domain/academic/entities.js';
+import type { ExaminationStatus } from '../../../../domain/academic/examination.js';
+import { CourseExamination } from '../../../../domain/academic/examination.js';
 import type { ScheduleExceptionType } from '../../../../domain/academic/schedule-exception.js';
 import { ScheduleException } from '../../../../domain/academic/schedule-exception.js';
 import type {

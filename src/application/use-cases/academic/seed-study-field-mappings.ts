@@ -1,5 +1,8 @@
 import { StudyFieldOfferingMapping } from '../../../domain/academic/study-field.js';
-import { NotFoundError, ValidationError } from '../../../domain/shared/errors.js';
+import {
+	NotFoundError,
+	ValidationError,
+} from '../../../domain/shared/errors.js';
 import type { IdGenerator } from '../../ports/outbound/id-generator.js';
 import type { UnitOfWork } from '../../ports/outbound/unit-of-work.js';
 
@@ -19,17 +22,14 @@ export async function seedStudyFieldMappings(
 			if (!seed.studyFieldCode.trim()) {
 				throw new ValidationError('studyFieldCode is required');
 			}
-			const field = await repositories.studyFields.findByCode(
-				seed.studyFieldCode,
-			);
+			const field = await repositories.studyFields.findByCode(seed.studyFieldCode);
 			if (!field) {
-				throw new NotFoundError(
-					`Study field ${seed.studyFieldCode} was not found`,
-				);
+				throw new NotFoundError(`Study field ${seed.studyFieldCode} was not found`);
 			}
 
-			const existing =
-				await repositories.studyFieldOfferingMappings.listByField(field.id);
+			const existing = await repositories.studyFieldOfferingMappings.listByField(
+				field.id,
+			);
 			const existingKeys = new Set(
 				existing.map((mapping) => mapping.courseOfferingExternalKey),
 			);

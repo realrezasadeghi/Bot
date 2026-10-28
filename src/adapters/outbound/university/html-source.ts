@@ -3,12 +3,12 @@ import type {
 	UniversityAcademicSnapshot,
 	UniversityCourseDto,
 	UniversityCourseOfferingDto,
+	UniversityExaminationDto,
 	UniversityFieldDto,
 	UniversityInstructorDto,
 	UniversityLevelDto,
 	UniversityProgramDto,
 	UniversityProgramOfferingDto,
-	UniversityExaminationDto,
 	UniversityScheduleExceptionDto,
 	UniversityTermDto,
 } from '../../../application/dto/university.js';

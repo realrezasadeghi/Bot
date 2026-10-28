@@ -137,9 +137,7 @@ export function renderExaminations(
 					const time = examination.startTime
 						? ` | ${examination.startTime}${examination.endTime ? `-${examination.endTime}` : ''}`
 						: '';
-					const location = examination.location
-						? ` | ${examination.location}`
-						: '';
+					const location = examination.location ? ` | ${examination.location}` : '';
 					return `- ${examination.examDate} | ${examination.courseTitle} (${examination.courseCode})${time}${location}`;
 				}),
 			].join('\n'),
@@ -305,9 +303,11 @@ export function renderStudyLevels(
 	return {
 		text: 'مقطع تحصیلی خود را انتخاب کنید:',
 		buttons: [
-			...levels.slice(0, 20).map((level) => [
-				{ text: level.title, callbackData: `sf:level:${level.id}` },
-			]),
+			...levels
+				.slice(0, 20)
+				.map((level) => [
+					{ text: level.title, callbackData: `sf:level:${level.id}` },
+				]),
 			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
 		],
 	};

@@ -25,9 +25,7 @@ export class UpdateStudentNotificationPreferences {
 			const selection =
 				await repositories.studentSelections.findActiveByUserId(userId);
 			if (!selection) {
-				throw new NotFoundError(
-					`No active academic selection for user ${userId}`,
-				);
+				throw new NotFoundError(`No active academic selection for user ${userId}`);
 			}
 
 			const updated = selection.withNotificationPreferences({

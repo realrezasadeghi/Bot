@@ -70,9 +70,7 @@ export async function seedStudyFields(uow: UnitOfWork): Promise<void> {
 		}
 
 		for (const fieldData of SEED_STUDY_FIELDS) {
-			const existing = await repositories.studyFields.findByCode(
-				fieldData.code,
-			);
+			const existing = await repositories.studyFields.findByCode(fieldData.code);
 			if (existing) {
 				await repositories.studyFields.update(
 					StudyField.create({

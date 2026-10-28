@@ -49,9 +49,7 @@ export class UpdateStudentCourseSelection {
 			const requestedAdds = uniqueIds(input.addCourseOfferingIds ?? []);
 			const requestedRemoves = uniqueIds(input.removeCourseOfferingIds ?? []);
 
-			const toAdd = requestedAdds.filter(
-				(id) => !currentOfferings.includes(id),
-			);
+			const toAdd = requestedAdds.filter((id) => !currentOfferings.includes(id));
 			const toRemove = requestedRemoves.filter((id) =>
 				currentOfferings.includes(id),
 			);

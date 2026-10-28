@@ -400,33 +400,30 @@ export class SynchronizeAcademicData {
 					]);
 				}
 
-				const examinations = snapshot.examinations
-					.map((examinationDto) => {
-						const courseOfferingId = offeringIdByExternalKey.get(
-							examinationDto.courseOfferingExternalKey,
+				const examinations = snapshot.examinations.map((examinationDto) => {
+					const courseOfferingId = offeringIdByExternalKey.get(
+						examinationDto.courseOfferingExternalKey,
+					);
+					if (!courseOfferingId) {
+						throw new UniversitySnapshotValidationError(
+							`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
 						);
-						if (!courseOfferingId) {
-							throw new UniversitySnapshotValidationError(
-								`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
-							);
-						}
-						return CourseExamination.create({
-							id: this.deps.ids.next(),
-							courseOfferingId,
-							examDate: LocalDate.parse(examinationDto.examDate),
-							startTime: examinationDto.startTime
-								? LocalTime.parse(examinationDto.startTime)
-								: null,
-							endTime: examinationDto.endTime
-								? LocalTime.parse(examinationDto.endTime)
-								: null,
-							location: examinationDto.location,
-							sourceIdentifier:
-								examinationDto.sourceIdentifier ??
-								examinationDto.externalKey ??
-								null,
-						});
+					}
+					return CourseExamination.create({
+						id: this.deps.ids.next(),
+						courseOfferingId,
+						examDate: LocalDate.parse(examinationDto.examDate),
+						startTime: examinationDto.startTime
+							? LocalTime.parse(examinationDto.startTime)
+							: null,
+						endTime: examinationDto.endTime
+							? LocalTime.parse(examinationDto.endTime)
+							: null,
+						location: examinationDto.location,
+						sourceIdentifier:
+							examinationDto.sourceIdentifier ?? examinationDto.externalKey ?? null,
 					});
+				});
 
 				if (examinations.length > 0) {
 					await repositories.examinations.upsertMany(examinations);

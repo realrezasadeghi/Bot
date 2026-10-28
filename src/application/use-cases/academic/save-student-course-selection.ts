@@ -61,11 +61,7 @@ export class SaveStudentCourseSelection {
 			});
 
 			const uniqueOfferingIds = uniqueIds(input.selectedCourseOfferingIds);
-			await validateSelectedOfferings(
-				repositories,
-				context,
-				uniqueOfferingIds,
-			);
+			await validateSelectedOfferings(repositories, context, uniqueOfferingIds);
 
 			if (!selection) {
 				selection = UserAcademicSelection.create({
@@ -105,8 +101,9 @@ export class SaveStudentCourseSelection {
 				now,
 				'COURSE_SELECTION_CHANGED',
 			);
-			const subscription =
-				await repositories.subscriptions.findActiveByUserId(input.userId);
+			const subscription = await repositories.subscriptions.findActiveByUserId(
+				input.userId,
+			);
 			if (subscription) {
 				await repositories.jobs.cancelPendingBySubscription(
 					subscription.id,
