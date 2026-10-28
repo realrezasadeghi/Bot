@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { ConfigurationError, loadConfig } from '../config/env.js';
 import type { AppContainer } from './container.js';
 import { createAppContainer } from './container.js';
-import { syncTerm } from './sync-term.js';
+import { syncTerm, toUniversitySourceRequest } from './sync-term.js';
 
 const config = loadConfig();
 const container = createAppContainer(config);
@@ -18,7 +18,10 @@ async function runSync(container: AppContainer): Promise<void> {
 	if (syncRunning || stopping) return;
 	syncRunning = true;
 	try {
-		const result = await syncTerm(container, config.university.termCode);
+		const result = await syncTerm(
+			container,
+			toUniversitySourceRequest(config.university),
+		);
 		logger.info(
 			{
 				termId: result.termId,
