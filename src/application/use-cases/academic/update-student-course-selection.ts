@@ -3,6 +3,11 @@ import { NotFoundError } from '../../../domain/shared/errors.js';
 import type { Clock } from '../../ports/outbound/clock.js';
 import type { IdGenerator } from '../../ports/outbound/id-generator.js';
 import type { UnitOfWork } from '../../ports/outbound/unit-of-work.js';
+import {
+	resolveSelectionContext,
+	uniqueIds,
+	validateSelectedOfferings,
+} from './course-selection-validation.js';
 
 export interface UpdateStudentCourseSelectionInput {
 	userId: string;
@@ -32,15 +37,28 @@ export class UpdateStudentCourseSelection {
 				);
 			}
 
+			const context = await resolveSelectionContext(repositories, {
+				academicLevelId: selection.academicLevelId,
+				studyFieldId: selection.studyFieldId,
+				academicTermId: selection.academicTermId,
+			});
+
 			const currentOfferings =
 				await repositories.studentSelections.listSelectedOfferings(selection.id);
 
-			const toAdd = (input.addCourseOfferingIds ?? []).filter(
+			const requestedAdds = uniqueIds(input.addCourseOfferingIds ?? []);
+			const requestedRemoves = uniqueIds(input.removeCourseOfferingIds ?? []);
+
+			const toAdd = requestedAdds.filter(
 				(id) => !currentOfferings.includes(id),
 			);
-			const toRemove = (input.removeCourseOfferingIds ?? []).filter((id) =>
+			const toRemove = requestedRemoves.filter((id) =>
 				currentOfferings.includes(id),
 			);
+
+			if (toAdd.length > 0) {
+				await validateSelectedOfferings(repositories, context, toAdd);
+			}
 
 			for (const offeringId of toAdd) {
 				await repositories.studentSelections.addSelectedOffering(
@@ -63,9 +81,19 @@ export class UpdateStudentCourseSelection {
 					studyFieldId: selection.studyFieldId,
 					academicTermId: selection.academicTermId,
 					isActive: selection.isActive,
+					classReminderEnabled: selection.classReminderEnabled,
+					reminderOffsetMinutes: selection.reminderOffsetMinutes,
 					updatedAt: now,
 				}),
 			);
+
+			if (toAdd.length > 0 || toRemove.length > 0) {
+				await repositories.jobs.cancelPendingBySelection(
+					selection.id,
+					now,
+					'COURSE_SELECTION_CHANGED',
+				);
+			}
 		});
 	}
 }

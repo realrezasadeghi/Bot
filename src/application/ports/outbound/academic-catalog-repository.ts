@@ -61,6 +61,9 @@ export interface AcademicCatalogRepository {
 	getProgramOffering(id: string): Promise<ProgramOfferingView | null>;
 	listProgramCourseOfferingIds(programOfferingId: string): Promise<string[]>;
 	listCourseOfferingsByTerm(termId: string): Promise<CourseOfferingView[]>;
+	listCourseOfferingsByIds(
+		courseOfferingIds: ReadonlyArray<string>,
+	): Promise<CourseOfferingView[]>;
 	getCourseOffering(id: string): Promise<CourseOfferingView | null>;
 	listMeetingPatternsByCourseOfferingIds(
 		courseOfferingIds: ReadonlyArray<string>,

@@ -74,6 +74,16 @@ export interface UniversityScheduleExceptionDto {
 	reason: string | null;
 }
 
+export interface UniversityExaminationDto {
+	externalKey: string | null;
+	courseOfferingExternalKey: string;
+	examDate: string;
+	startTime: string | null;
+	endTime: string | null;
+	location: string | null;
+	sourceIdentifier: string | null;
+}
+
 export interface UniversityCourseOfferingDto {
 	externalKey: string;
 	courseExternalKey: string;
@@ -103,6 +113,7 @@ export interface UniversityAcademicSnapshot {
 	instructors: UniversityInstructorDto[];
 	courseOfferings: UniversityCourseOfferingDto[];
 	scheduleExceptions: UniversityScheduleExceptionDto[];
+	examinations: UniversityExaminationDto[];
 	warnings: string[];
 }
 

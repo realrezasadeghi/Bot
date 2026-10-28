@@ -24,6 +24,7 @@ export class PostgresNotificationJobRepository
 				type: job.type,
 				userId: job.userId,
 				subscriptionId: job.subscriptionId,
+				selectionId: job.selectionId,
 				occurrenceId: job.occurrenceId,
 				recipientIdentityId: job.recipientIdentityId,
 				dueAt: job.dueAt,
@@ -63,6 +64,7 @@ export class PostgresNotificationJobRepository
 					type: job.type,
 					userId: job.userId,
 					subscriptionId: job.subscriptionId,
+					selectionId: job.selectionId,
 					occurrenceId: job.occurrenceId,
 					recipientIdentityId: job.recipientIdentityId,
 					dueAt: job.dueAt,
@@ -221,6 +223,31 @@ export class PostgresNotificationJobRepository
 		return rows.length;
 	}
 
+	async cancelPendingBySelection(
+		selectionId: string,
+		now: Date,
+		reason: string,
+	): Promise<number> {
+		const rows = await this.db
+			.update(notificationJobs)
+			.set({
+				status: NotificationJobStatus.Cancelled,
+				lockedAt: null,
+				lockedBy: null,
+				lastError: reason,
+				nextAttemptAt: now,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(notificationJobs.selectionId, selectionId),
+					eq(notificationJobs.status, NotificationJobStatus.Pending),
+				),
+			)
+			.returning({ id: notificationJobs.id });
+		return rows.length;
+	}
+
 	async cancelPendingByIdempotencyKeys(
 		idempotencyKeys: ReadonlyArray<string>,
 		now: Date,
@@ -256,6 +283,22 @@ export class PostgresNotificationJobRepository
 			.where(
 				and(
 					eq(notificationJobs.subscriptionId, subscriptionId),
+					eq(notificationJobs.status, NotificationJobStatus.Pending),
+				),
+			)
+			.orderBy(asc(notificationJobs.dueAt));
+		return rows.map(toNotificationJob);
+	}
+
+	async listPendingBySelection(
+		selectionId: string,
+	): Promise<NotificationJob[]> {
+		const rows = await this.db
+			.select()
+			.from(notificationJobs)
+			.where(
+				and(
+					eq(notificationJobs.selectionId, selectionId),
 					eq(notificationJobs.status, NotificationJobStatus.Pending),
 				),
 			)

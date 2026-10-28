@@ -644,6 +644,15 @@ export class PostgresAcademicCatalogRepository
 		return views[0] ?? null;
 	}
 
+	async listCourseOfferingsByIds(
+		courseOfferingIds: ReadonlyArray<string>,
+	): Promise<CourseOfferingView[]> {
+		if (courseOfferingIds.length === 0) return [];
+		return this.loadCourseOfferings(
+			inArray(courseOfferings.id, [...courseOfferingIds]),
+		);
+	}
+
 	private async loadCourseOfferings(
 		condition: SQL | undefined,
 	): Promise<CourseOfferingView[]> {

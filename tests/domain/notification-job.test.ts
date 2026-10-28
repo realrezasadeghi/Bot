@@ -63,4 +63,47 @@ describe('NotificationJob', () => {
 		expect(cancelled.status).toBe(NotificationJobStatus.Cancelled);
 		expect(cancelled.cancel(now).status).toBe(NotificationJobStatus.Cancelled);
 	});
+
+	it('allows a student selection as the single notification owner', () => {
+		const selectionJob = NotificationJob.create({
+			id: 'job-2',
+			type: NotificationType.ClassReminder,
+			userId: 'user-1',
+			selectionId: 'selection-1',
+			recipientIdentityId: 'identity-1',
+			dueAt: now,
+			idempotencyKey: 'selection-reminder:occurrence-1',
+			createdAt: now,
+		});
+		expect(selectionJob.subscriptionId).toBeNull();
+		expect(selectionJob.selectionId).toBe('selection-1');
+	});
+
+	it('rejects jobs without an owner or with two owners', () => {
+		expect(() =>
+			NotificationJob.create({
+				id: 'job-3',
+				type: NotificationType.ClassReminder,
+				userId: 'user-1',
+				recipientIdentityId: 'identity-1',
+				dueAt: now,
+				idempotencyKey: 'no-owner',
+				createdAt: now,
+			}),
+		).toThrow('exactly one of subscriptionId or selectionId');
+
+		expect(() =>
+			NotificationJob.create({
+				id: 'job-4',
+				type: NotificationType.ClassReminder,
+				userId: 'user-1',
+				subscriptionId: 'subscription-1',
+				selectionId: 'selection-1',
+				recipientIdentityId: 'identity-1',
+				dueAt: now,
+				idempotencyKey: 'two-owners',
+				createdAt: now,
+			}),
+		).toThrow('exactly one of subscriptionId or selectionId');
+	});
 });

@@ -1,3 +1,4 @@
+import type { ExaminationEntryDto } from '../dto/read-models.js';
 import type { ScheduleEntryDto } from '../dto/schedule.js';
 
 function formatEntry(entry: ScheduleEntryDto): string {
@@ -21,6 +22,24 @@ export function formatClassReminder(input: {
 	if (entry.instructorName) lines.push(`استاد: ${entry.instructorName}`);
 	if (entry.location) lines.push(`مکان: ${entry.location}`);
 	lines.push(`شروع کلاس تا ${input.offsetMinutes} دقیقه دیگر است.`);
+	return lines.join('\n');
+}
+
+export function formatExamReminder(input: {
+	examination: ExaminationEntryDto;
+	offsetMinutes: number;
+}): string {
+	const { examination } = input;
+	const lines = [
+		'یادآوری امتحان',
+		examination.examDate,
+		examination.startTime
+			? `${examination.startTime}${examination.endTime ? ` تا ${examination.endTime}` : ''}`
+			: 'زمان شروع ثبت نشده است.',
+		`${examination.courseTitle} (${examination.courseCode})`,
+	];
+	if (examination.location) lines.push(`مکان: ${examination.location}`);
+	lines.push(`شروع امتحان تا ${input.offsetMinutes} دقیقه دیگر است.`);
 	return lines.join('\n');
 }
 

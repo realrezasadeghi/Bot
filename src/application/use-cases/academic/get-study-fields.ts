@@ -6,7 +6,9 @@ export class GetStudyFields {
 
 	async execute(levelId?: string): Promise<StudyField[]> {
 		return this.uow.run(async (repositories) => {
-			const fields = await repositories.studyFields.listByLevel(levelId ?? '');
+			const fields = levelId
+				? await repositories.studyFields.listByLevel(levelId)
+				: await repositories.studyFields.listByLevel();
 			return fields.filter((field) => field.isActive);
 		});
 	}

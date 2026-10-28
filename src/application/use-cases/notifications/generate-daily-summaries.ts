@@ -46,6 +46,15 @@ export class GenerateDailySummaries {
 				: await repositories.subscriptions.listActive();
 
 			for (const subscription of subscriptions) {
+				const studentSelection =
+					await repositories.studentSelections.findActiveByUserId(
+						subscription.userId,
+					);
+				if (studentSelection) {
+					skipped += 1;
+					continue;
+				}
+
 				const preference =
 					await repositories.subscriptions.getPreferenceBySubscriptionId(
 						subscription.id,

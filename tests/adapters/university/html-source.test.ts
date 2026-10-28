@@ -175,7 +175,7 @@ describe('HTMLUniversitySource', () => {
 			expect(offeringsWithPatterns.length).toBeGreaterThan(0);
 		});
 
-		it('parses exam dates into schedule exceptions', async () => {
+		it('parses exam dates into dedicated examination records', async () => {
 			const html = await loadFixture('valid.html');
 			mockFetch(html);
 
@@ -193,12 +193,13 @@ describe('HTMLUniversitySource', () => {
 
 			const snapshot = await source.fetchSnapshot(makeRequest());
 
-			const exceptions = snapshot.scheduleExceptions;
-			expect(exceptions.length).toBeGreaterThan(0);
-			const firstException = exceptions[0];
-			expect(firstException.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-			expect(firstException.courseOfferingExternalKey).toBeDefined();
-			expect(firstException.type).toBe('TIME_CHANGED');
+			expect(snapshot.scheduleExceptions).toHaveLength(0);
+			const examinations = snapshot.examinations;
+			expect(examinations.length).toBeGreaterThan(0);
+			const firstExamination = examinations[0];
+			expect(firstExamination?.examDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			expect(firstExamination?.courseOfferingExternalKey).toBeDefined();
+			expect(firstExamination?.sourceIdentifier).toBeDefined();
 		});
 	});
 

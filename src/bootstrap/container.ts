@@ -26,16 +26,19 @@ import {
 import { GetAvailableCourseOfferings } from '../application/use-cases/academic/get-available-course-offerings.js';
 import { GetAvailableTerms } from '../application/use-cases/academic/get-available-terms.js';
 import { GetStudentTimetable } from '../application/use-cases/academic/get-student-timetable.js';
+import { GetUpcomingExaminations } from '../application/use-cases/academic/get-upcoming-examinations.js';
 import { GetStudyFields } from '../application/use-cases/academic/get-study-fields.js';
 import { ImportUniversityAcademicData } from '../application/use-cases/academic/import-university-academic-data.js';
 import { SaveStudentCourseSelection } from '../application/use-cases/academic/save-student-course-selection.js';
 import { SynchronizeAcademicData } from '../application/use-cases/academic/synchronize-academic-data.js';
 import { UpdateStudentCourseSelection } from '../application/use-cases/academic/update-student-course-selection.js';
+import { UpdateStudentNotificationPreferences } from '../application/use-cases/academic/update-student-notification-preferences.js';
 import { RegisterOrResolveUser } from '../application/use-cases/identity/register-or-resolve-user.js';
 import { HandleIncomingPlatformMessage } from '../application/use-cases/messaging/handle-incoming-platform-message.js';
 import { DispatchDueNotifications } from '../application/use-cases/notifications/dispatch-due-notifications.js';
 import { GenerateDailySummaries } from '../application/use-cases/notifications/generate-daily-summaries.js';
 import { ScheduleClassReminders } from '../application/use-cases/notifications/schedule-class-reminders.js';
+import { ScheduleExamReminders } from '../application/use-cases/notifications/schedule-exam-reminders.js';
 import { GenerateClassOccurrences } from '../application/use-cases/scheduling/generate-class-occurrences.js';
 import {
 	GetDailySchedule,
@@ -75,10 +78,13 @@ export interface AppContainer {
 	getAvailableCourseOfferings: GetAvailableCourseOfferings;
 	saveStudentCourseSelection: SaveStudentCourseSelection;
 	getStudentTimetable: GetStudentTimetable;
+	getUpcomingExaminations: GetUpcomingExaminations;
 	updateStudentCourseSelection: UpdateStudentCourseSelection;
+	updateStudentNotificationPreferences: UpdateStudentNotificationPreferences;
 	handleIncoming: HandleIncomingPlatformMessage;
 	dispatchNotifications: DispatchDueNotifications;
 	scheduleClassReminders: ScheduleClassReminders;
+	scheduleExamReminders: ScheduleExamReminders;
 	generateDailySummaries: GenerateDailySummaries;
 	generateClassOccurrences: GenerateClassOccurrences;
 	importUniversityData: ImportUniversityAcademicData;
@@ -170,6 +176,10 @@ export function createAppContainer(config: AppConfig): AppContainer {
 	const getAvailablePrograms = new GetAvailablePrograms(uow);
 	const getDailySchedule = new GetDailySchedule({ uow, clock });
 	const getWeeklySchedule = new GetWeeklySchedule({ uow, clock });
+	const getUpcomingExaminations = new GetUpcomingExaminations({
+		uow,
+		clock,
+	});
 	const getCurrentSubscription = new GetCurrentSubscription(uow);
 	const getProgramCourses = new GetProgramCourses(uow);
 	const subscribeToProgram = new SubscribeToProgram({
@@ -192,6 +202,21 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		defaults,
 	});
 	const unsubscribeFromProgram = new UnsubscribeFromProgram({ uow, clock });
+	const getStudyFields = new GetStudyFields(uow);
+	const getAvailableCourseOfferings = new GetAvailableCourseOfferings(uow);
+	const saveStudentCourseSelection = new SaveStudentCourseSelection({
+		uow,
+		ids,
+		clock,
+	});
+	const getStudentTimetable = new GetStudentTimetable({ uow, clock });
+	const updateStudentCourseSelection = new UpdateStudentCourseSelection({
+		uow,
+		ids,
+		clock,
+	});
+	const updateStudentNotificationPreferences =
+		new UpdateStudentNotificationPreferences({ uow, clock });
 
 	const handleIncoming = new HandleIncomingPlatformMessage({
 		uow,
@@ -205,6 +230,11 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		getAvailablePrograms,
 		getDailySchedule,
 		getWeeklySchedule,
+		getUpcomingExaminations,
+		getStudyFields,
+		getAvailableCourseOfferings,
+		saveStudentCourseSelection,
+		updateStudentNotificationPreferences,
 		getCurrentSubscription,
 		getProgramCourses,
 		subscribeToProgram,
@@ -230,6 +260,15 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		clock,
 		logger,
 		horizonDays: config.scheduling.reminderHorizonDays,
+	});
+	const scheduleExamReminders = new ScheduleExamReminders({
+		uow,
+		ids,
+		clock,
+		logger,
+		enabled: config.scheduling.examRemindersEnabled,
+		horizonDays: config.scheduling.reminderHorizonDays,
+		offsetsMinutes: config.scheduling.examReminderOffsetsMinutes,
 	});
 	const generateDailySummaries = new GenerateDailySummaries({
 		uow,
@@ -263,22 +302,6 @@ export function createAppContainer(config: AppConfig): AppContainer {
 	const studentSelections = new PostgresStudentSelectionRepository(
 		connection.db,
 	);
-	const getStudyFields = new GetStudyFields(uow);
-	const getAvailableCourseOfferings = new GetAvailableCourseOfferings(uow);
-	const saveStudentCourseSelection = new SaveStudentCourseSelection({
-		uow,
-		ids,
-		clock,
-	});
-	const getStudentTimetable = new GetStudentTimetable({
-		uow,
-		clock,
-	});
-	const updateStudentCourseSelection = new UpdateStudentCourseSelection({
-		uow,
-		ids,
-		clock,
-	});
 
 	return {
 		config,
@@ -297,10 +320,13 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		getAvailableCourseOfferings,
 		saveStudentCourseSelection,
 		getStudentTimetable,
+		getUpcomingExaminations,
 		updateStudentCourseSelection,
+		updateStudentNotificationPreferences,
 		handleIncoming,
 		dispatchNotifications,
 		scheduleClassReminders,
+		scheduleExamReminders,
 		generateDailySummaries,
 		generateClassOccurrences,
 		importUniversityData,

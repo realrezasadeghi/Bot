@@ -35,6 +35,10 @@ export const classOccurrenceStatusEnum = pgEnum('class_occurrence_status', [
 	'SCHEDULED',
 	'CANCELLED',
 ]);
+export const examinationStatusEnum = pgEnum('examination_status', [
+	'SCHEDULED',
+	'CANCELLED',
+]);
 export const notificationTypeEnum = pgEnum('notification_type', [
 	'DAILY_SUMMARY',
 	'CLASS_REMINDER',
@@ -511,9 +515,14 @@ export const notificationJobs = pgTable(
 		userId: uuid('user_id')
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
-		subscriptionId: uuid('subscription_id')
-			.notNull()
-			.references(() => userProgramSubscriptions.id, { onDelete: 'cascade' }),
+		subscriptionId: uuid('subscription_id').references(
+			() => userProgramSubscriptions.id,
+			{ onDelete: 'cascade' },
+		),
+		selectionId: uuid('selection_id').references(
+			() => studentAcademicSelections.id,
+			{ onDelete: 'cascade' },
+		),
 		occurrenceId: uuid('occurrence_id').references(() => classOccurrences.id, {
 			onDelete: 'set null',
 		}),
@@ -543,11 +552,16 @@ export const notificationJobs = pgTable(
 		index('notification_jobs_due_idx').on(table.status, table.nextAttemptAt),
 		index('notification_jobs_lock_idx').on(table.status, table.lockedAt),
 		index('notification_jobs_subscription_idx').on(table.subscriptionId),
+		index('notification_jobs_selection_idx').on(table.selectionId),
 		index('notification_jobs_occurrence_idx').on(table.occurrenceId),
 		index('notification_jobs_user_idx').on(table.userId),
 		check(
 			'notification_jobs_attempts_chk',
 			sql`${table.attempts} >= 0 AND ${table.maxAttempts} >= 1`,
+		),
+		check(
+			'notification_jobs_owner_chk',
+			sql`(${table.subscriptionId} IS NULL) <> (${table.selectionId} IS NULL)`,
 		),
 	],
 );
@@ -731,6 +745,12 @@ export const studentAcademicSelections = pgTable(
 			onDelete: 'set null',
 		}),
 		isActive: boolean('is_active').notNull().default(true),
+		classReminderEnabled: boolean('class_reminder_enabled')
+			.notNull()
+			.default(true),
+		reminderOffsetMinutes: smallint('reminder_offset_minutes')
+			.notNull()
+			.default(60),
 		...timestamps,
 	},
 	(table) => [
@@ -738,6 +758,10 @@ export const studentAcademicSelections = pgTable(
 			.on(table.userId)
 			.where(sql`${table.isActive} = true`),
 		index('student_academic_selections_user_idx').on(table.userId),
+		check(
+			'student_academic_selections_reminder_offset_chk',
+			sql`${table.reminderOffsetMinutes} >= 0 AND ${table.reminderOffsetMinutes} <= 720`,
+		),
 	],
 );
 
@@ -768,6 +792,40 @@ export const studentSelectedOfferings = pgTable(
 	],
 );
 
+/**
+ * Imported examination dates. These are stored separately from recurring class
+ * schedules; an examination is never inferred from a meeting pattern.
+ */
+export const courseExaminations = pgTable(
+	'course_examinations',
+	{
+		id: uuid('id').primaryKey(),
+		courseOfferingId: uuid('course_offering_id')
+			.notNull()
+			.references(() => courseOfferings.id, { onDelete: 'cascade' }),
+		examDate: date('exam_date', { mode: 'string' }).notNull(),
+		startMinute: smallint('start_minute'),
+		endMinute: smallint('end_minute'),
+		location: text('location'),
+		sourceIdentifier: text('source_identifier'),
+		status: examinationStatusEnum('status').notNull().default('SCHEDULED'),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('course_examinations_natural_uq').on(
+			table.courseOfferingId,
+			table.examDate,
+			table.sourceIdentifier,
+		),
+		index('course_examinations_offering_idx').on(table.courseOfferingId),
+		index('course_examinations_date_idx').on(table.examDate),
+		check(
+			'course_examinations_time_chk',
+			sql`(${table.startMinute} IS NULL AND ${table.endMinute} IS NULL) OR (${table.startMinute} IS NOT NULL AND ${table.endMinute} IS NOT NULL AND ${table.startMinute} >= 0 AND ${table.endMinute} <= 1439 AND ${table.startMinute} < ${table.endMinute})`,
+		),
+	],
+);
+
 export type DatabaseSchema = {
 	academicLevels: typeof academicLevels;
 	fieldsOfStudy: typeof fieldsOfStudy;
@@ -795,4 +853,5 @@ export type DatabaseSchema = {
 	studyFieldOfferingMappings: typeof studyFieldOfferingMappings;
 	studentAcademicSelections: typeof studentAcademicSelections;
 	studentSelectedOfferings: typeof studentSelectedOfferings;
+	courseExaminations: typeof courseExaminations;
 };

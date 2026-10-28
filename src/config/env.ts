@@ -102,6 +102,19 @@ const envSchema = z.object({
 		.default(60),
 	DEFAULT_DAILY_SUMMARY_TIME: localTimeSchema.default('08:00'),
 	DEFAULT_TIMEZONE: timeZoneSchema.default('Asia/Tehran'),
+	EXAM_REMINDERS_ENABLED: booleanish.default(false),
+	EXAM_REMINDER_OFFSETS_MINUTES: z
+		.string()
+		.default('1440,60')
+		.transform((value) =>
+			value
+				.split(',')
+				.map((part) => Number(part.trim()))
+				.filter(
+					(minutes) =>
+						Number.isInteger(minutes) && minutes >= 0 && minutes <= 10_080,
+				),
+		),
 });
 
 export type AppConfig = Readonly<{
@@ -163,6 +176,8 @@ export type AppConfig = Readonly<{
 		defaultReminderOffsetMinutes: number;
 		defaultDailySummaryTime: string;
 		defaultTimeZone: string;
+		examRemindersEnabled: boolean;
+		examReminderOffsetsMinutes: ReadonlyArray<number>;
 	};
 }>;
 
@@ -249,6 +264,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			defaultReminderOffsetMinutes: value.DEFAULT_REMINDER_OFFSET_MINUTES,
 			defaultDailySummaryTime: value.DEFAULT_DAILY_SUMMARY_TIME,
 			defaultTimeZone: value.DEFAULT_TIMEZONE,
+			examRemindersEnabled: value.EXAM_REMINDERS_ENABLED,
+			examReminderOffsetsMinutes: value.EXAM_REMINDER_OFFSETS_MINUTES,
 		},
 	});
 }

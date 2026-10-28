@@ -9,7 +9,9 @@ import type { Logger } from '../../ports/outbound/logger.js';
 import type { UnitOfWork } from '../../ports/outbound/unit-of-work.js';
 import {
 	type BotContent,
+	renderCourseOfferings,
 	renderDailySchedule,
+	renderExaminations,
 	renderFields,
 	renderHelp,
 	renderLevels,
@@ -17,6 +19,10 @@ import {
 	renderPreferences,
 	renderProgramCourses,
 	renderPrograms,
+	renderStudentPreferences,
+	renderStudyFields,
+	renderStudyLevels,
+	renderStudyTerms,
 	renderSubscription,
 	renderTerms,
 	renderUnresolvedProgramGrouping,
@@ -28,7 +34,12 @@ import type {
 	GetAvailableLevels,
 	GetAvailablePrograms,
 } from '../academic/get-academic-options.js';
+import type { GetAvailableCourseOfferings } from '../academic/get-available-course-offerings.js';
 import type { GetAvailableTerms } from '../academic/get-available-terms.js';
+import type { GetStudyFields } from '../academic/get-study-fields.js';
+import type { GetUpcomingExaminations } from '../academic/get-upcoming-examinations.js';
+import type { SaveStudentCourseSelection } from '../academic/save-student-course-selection.js';
+import type { UpdateStudentNotificationPreferences } from '../academic/update-student-notification-preferences.js';
 import type { RegisterOrResolveUser } from '../identity/register-or-resolve-user.js';
 import type {
 	GetDailySchedule,
@@ -63,6 +74,11 @@ export interface IncomingMessageDependencies {
 	getAvailablePrograms: GetAvailablePrograms;
 	getDailySchedule: GetDailySchedule;
 	getWeeklySchedule: GetWeeklySchedule;
+	getUpcomingExaminations: GetUpcomingExaminations;
+	getStudyFields: GetStudyFields;
+	getAvailableCourseOfferings: GetAvailableCourseOfferings;
+	saveStudentCourseSelection: SaveStudentCourseSelection;
+	updateStudentNotificationPreferences: UpdateStudentNotificationPreferences;
 	getCurrentSubscription: GetCurrentSubscription;
 	getProgramCourses: GetProgramCourses;
 	subscribeToProgram: SubscribeToProgram;
@@ -98,6 +114,10 @@ export class HandleIncomingPlatformMessage {
 		const aliases: Record<string, string> = {
 			امروز: 'today',
 			هفتگی: 'week',
+			امتحانات: 'exams',
+			امتحان: 'exams',
+			رشته: 'study',
+			رشته‌ها: 'study',
 			برنامه: 'program',
 			راهنما: 'help',
 			تنظیمات: 'prefs',
@@ -137,12 +157,27 @@ export class HandleIncomingPlatformMessage {
 				return this.toMessage(renderWeeklySchedule(schedule), recipient);
 			}
 
+			case 'exams': {
+				const examinations =
+					await this.deps.getUpcomingExaminations.execute(userId);
+				return this.toMessage(renderExaminations(examinations), recipient);
+			}
+
 			case 'program': {
 				const subscription = await this.deps.getCurrentSubscription.execute(userId);
 				return this.toMessage(renderSubscription(subscription), recipient);
 			}
 
 			case 'prefs': {
+				const selection = await this.deps.uow.run((repositories) =>
+					repositories.studentSelections.findActiveByUserId(userId),
+				);
+				if (selection) {
+					return this.toMessage(
+						renderStudentPreferences(selection),
+						recipient,
+					);
+				}
 				const subscription = await this.deps.getCurrentSubscription.execute(userId);
 				if (!subscription) {
 					return this.toMessage(this.needSubscriptionContent(), recipient);
@@ -210,6 +245,9 @@ export class HandleIncomingPlatformMessage {
 
 			case 'subscribe':
 				return this.startSubscriptionFlow(userId, event, recipient);
+
+			case 'study':
+				return this.startStudySelectionFlow(userId, event, recipient);
 
 			case 'cancel':
 				await this.clearState(userId, event);
@@ -325,6 +363,19 @@ export class HandleIncomingPlatformMessage {
 			);
 		}
 
+		if (action === 'sf') {
+			return this.handleStudySelectionCallback(userId, event, recipient, rest);
+		}
+
+		if (action === 'spref') {
+			return this.handleStudentPreferenceCallback(
+				userId,
+				event,
+				recipient,
+				rest,
+			);
+		}
+
 		if (action === 'pref') {
 			return this.handlePreferenceCallback(userId, event, recipient, rest);
 		}
@@ -352,6 +403,192 @@ export class HandleIncomingPlatformMessage {
 		if (action === 'noop') return null;
 
 		return this.toMessage(renderMainMenu(), recipient);
+	}
+
+	private async startStudySelectionFlow(
+		userId: string,
+		event: IncomingPlatformEvent,
+		recipient: OutboundRecipient,
+	): Promise<OutboundMessage> {
+		await this.clearState(userId, event);
+		const [terms, levels] = await Promise.all([
+			this.deps.getAvailableTerms.execute(),
+			this.deps.getAvailableLevels.execute(),
+		]);
+		if (terms.length === 0) {
+			return this.toMessage(
+				{
+					text: 'هنوز ترمی از منبع دانشگاه وارد نشده است.',
+					buttons: [[{ text: 'بازگشت به منو', callbackData: 'menu:home' }]],
+				},
+				recipient,
+			);
+		}
+		if (levels.length === 0) {
+			return this.toMessage(renderUnresolvedProgramGrouping(), recipient);
+		}
+		return this.toMessage(renderStudyLevels(levels), recipient);
+	}
+
+	private async handleStudySelectionCallback(
+		userId: string,
+		event: IncomingPlatformEvent,
+		recipient: OutboundRecipient,
+		parts: string[],
+	): Promise<OutboundMessage> {
+		const [operation, ...values] = parts;
+		const value = values[0];
+		const state = await this.getState(userId, event);
+
+		if (operation === 'level' && value) {
+			const fields = await this.deps.getStudyFields.execute(value);
+			if (fields.length === 0) {
+				return this.toMessage(
+					{
+						text: 'برای این مقطع رشته‌ای تعریف نشده است.',
+						buttons: [[{ text: 'بازگشت به منو', callbackData: 'menu:home' }]],
+					},
+					recipient,
+				);
+			}
+			await this.saveState(userId, event, 'STUDY_SELECT_FIELD', {
+				levelId: value,
+			});
+			return this.toMessage(renderStudyFields(fields), recipient);
+		}
+
+		if (operation === 'field' && value) {
+			if (!state?.data.levelId) {
+				return this.toMessage(this.restartFlowContent(), recipient);
+			}
+			const terms = await this.deps.getAvailableTerms.execute();
+			await this.saveState(userId, event, 'STUDY_SELECT_TERM', {
+				levelId: state.data.levelId,
+				fieldId: value,
+			});
+			return this.toMessage(renderStudyTerms(terms), recipient);
+		}
+
+		if (operation === 'term' && value) {
+			if (!state?.data.levelId || !state.data.fieldId) {
+				return this.toMessage(this.restartFlowContent(), recipient);
+			}
+			const offerings = await this.deps.getAvailableCourseOfferings.execute(
+				userId,
+				{ studyFieldId: state.data.fieldId, termId: value },
+			);
+			if (offerings.length === 0) {
+				return this.toMessage(
+					{
+						text: 'برای این رشته و ترم درسی تعریف نشده است.',
+						buttons: [[{ text: 'بازگشت به منو', callbackData: 'menu:home' }]],
+					},
+					recipient,
+				);
+			}
+			await this.saveState(userId, event, 'STUDY_SELECT_COURSES', {
+				levelId: state.data.levelId,
+				fieldId: state.data.fieldId,
+				termId: value,
+				selectedCourseOfferingIds: '',
+			});
+			return this.toMessage(
+				renderCourseOfferings(offerings, new Set()),
+				recipient,
+			);
+		}
+
+		if (
+			(operation === 'toggle' || operation === 'save') &&
+			state?.data.levelId &&
+			state.data.fieldId &&
+			state.data.termId
+		) {
+			const selected = new Set(
+				(state.data.selectedCourseOfferingIds ?? '')
+					.split(',')
+					.filter(Boolean),
+			);
+			if (operation === 'toggle' && value) {
+				if (selected.has(value)) selected.delete(value);
+				else selected.add(value);
+				await this.saveState(userId, event, 'STUDY_SELECT_COURSES', {
+					levelId: state.data.levelId,
+					fieldId: state.data.fieldId,
+					termId: state.data.termId,
+					selectedCourseOfferingIds: [...selected].join(','),
+				});
+				const offerings = await this.deps.getAvailableCourseOfferings.execute(
+					userId,
+					{
+						studyFieldId: state.data.fieldId,
+						termId: state.data.termId,
+					},
+				);
+				return this.toMessage(
+					renderCourseOfferings(offerings, selected),
+					recipient,
+				);
+			}
+
+			if (operation === 'save') {
+				await this.deps.saveStudentCourseSelection.execute({
+					userId,
+					academicLevelId: state.data.levelId,
+					studyFieldId: state.data.fieldId,
+					academicTermId: state.data.termId,
+					selectedCourseOfferingIds: [...selected],
+				});
+				await this.clearState(userId, event);
+				return this.toMessage(
+					{
+						text: `انتخاب دروس ذخیره شد. ${selected.size} درس فعال است.`,
+						buttons: renderMainMenu().buttons,
+					},
+					recipient,
+				);
+			}
+		}
+
+		return this.toMessage(this.restartFlowContent(), recipient);
+	}
+
+	private async handleStudentPreferenceCallback(
+		userId: string,
+		event: IncomingPlatformEvent,
+		recipient: OutboundRecipient,
+		parts: string[],
+	): Promise<OutboundMessage> {
+		const [operation, value] = parts;
+		if (operation === 'toggle' && value === 'reminder') {
+			const current = await this.deps.uow.run((repositories) =>
+				repositories.studentSelections.findActiveByUserId(userId),
+			);
+			if (!current) {
+				return this.toMessage(this.needSubscriptionContent(), recipient);
+			}
+			const updated =
+				await this.deps.updateStudentNotificationPreferences.execute(userId, {
+					classReminderEnabled: !current.classReminderEnabled,
+				});
+			return this.toMessage(renderStudentPreferences(updated), recipient);
+		}
+
+		if (operation === 'offset' && value) {
+			const updated =
+				await this.deps.updateStudentNotificationPreferences.execute(userId, {
+					reminderOffsetMinutes: Number(value),
+				});
+			return this.toMessage(renderStudentPreferences(updated), recipient);
+		}
+
+		const selection = await this.deps.uow.run((repositories) =>
+			repositories.studentSelections.findActiveByUserId(userId),
+		);
+		if (!selection) {
+			return this.toMessage(this.needSubscriptionContent(), recipient);
+		}
+		return this.toMessage(renderStudentPreferences(selection), recipient);
 	}
 
 	private async handlePreferenceCallback(

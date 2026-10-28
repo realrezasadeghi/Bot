@@ -1,3 +1,4 @@
+import { NotFoundError } from '../../../domain/shared/errors.js';
 import type { CourseOfferingView } from '../../dto/read-models.js';
 import type { UnitOfWork } from '../../ports/outbound/unit-of-work.js';
 
@@ -16,15 +17,23 @@ export class GetAvailableCourseOfferings {
 		return this.uow.run(async (repositories) => {
 			const selection =
 				await repositories.studentSelections.findActiveByUserId(userId);
-			if (!selection) {
-				return [];
-			}
 
-			const fieldId = filter.studyFieldId ?? selection.studyFieldId;
-			const termId = filter.termId ?? selection.academicTermId;
+			const fieldId = filter.studyFieldId ?? selection?.studyFieldId ?? null;
+			const termId = filter.termId ?? selection?.academicTermId ?? null;
 
 			if (!fieldId || !termId) {
 				return [];
+			}
+
+			const [field, term] = await Promise.all([
+				repositories.studyFields.findById(fieldId),
+				repositories.academic.getTermById(termId),
+			]);
+			if (!field || !field.isActive) {
+				throw new NotFoundError(`Study field ${fieldId} is not available`);
+			}
+			if (!term || !term.isActive) {
+				throw new NotFoundError(`Academic term ${termId} is not available`);
 			}
 
 			const mappings =
@@ -33,28 +42,31 @@ export class GetAvailableCourseOfferings {
 				return [];
 			}
 
-			const externalKeys = mappings.map(
-				(mapping) => mapping.courseOfferingExternalKey,
+			const externalKeys = new Set(
+				mappings.map((mapping) => mapping.courseOfferingExternalKey),
 			);
 
 			const offerings =
 				await repositories.academic.listCourseOfferingsByTerm(termId);
 
-			const externalKeyToView = new Map(
-				offerings.map((view) => [view.courseOffering.externalKey, view]),
-			);
-
 			const result: CourseOfferingView[] = [];
 			const seen = new Set<string>();
-			for (const externalKey of externalKeys) {
-				const view = externalKeyToView.get(externalKey);
-				if (view && !seen.has(view.courseOffering.id)) {
-					seen.add(view.courseOffering.id);
-					result.push(view);
-				}
+			for (const view of offerings) {
+				const offering = view.courseOffering;
+				if (!offering.isActive) continue;
+				if (!externalKeys.has(offering.externalKey)) continue;
+				if (seen.has(offering.id)) continue;
+				seen.add(offering.id);
+				result.push(view);
 			}
 
-			return result;
+			return result.sort((left, right) => {
+				const courseCompare = left.course.code.localeCompare(right.course.code);
+				if (courseCompare !== 0) return courseCompare;
+				return (left.courseOffering.sectionCode ?? '').localeCompare(
+					right.courseOffering.sectionCode ?? '',
+				);
+			});
 		});
 	}
 }

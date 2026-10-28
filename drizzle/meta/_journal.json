@@ -15,6 +15,13 @@
       "when": 1793136589370,
       "tag": "0001_careful_dreaming_celestial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793170026048,
+      "tag": "0002_young_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

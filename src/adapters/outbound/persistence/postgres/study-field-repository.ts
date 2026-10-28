@@ -85,7 +85,7 @@ export class PostgresStudyFieldRepository implements StudyFieldRepository {
 		const rows = await this.db
 			.select()
 			.from(studyFields)
-			.where(and(...conditions))
+			.where(conditions.length > 0 ? and(...conditions) : undefined)
 			.orderBy(asc(studyFields.sortOrder), asc(studyFields.name));
 		return rows.map(toStudyField);
 	}

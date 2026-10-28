@@ -1,4 +1,5 @@
 import type { AcademicCatalogRepository } from './academic-catalog-repository.js';
+import type { ExaminationRepository } from './examination-repository.js';
 import type { ExternalIdentifierRepository } from './external-identifier-repository.js';
 import type { NotificationJobRepository } from './notification-job-repository.js';
 import type { ClassOccurrenceRepository } from './occurrence-repository.js';
@@ -12,6 +13,7 @@ import type { UserRepository } from './user-repository.js';
 export interface Repositories {
 	academic: AcademicCatalogRepository;
 	externalIds: ExternalIdentifierRepository;
+	examinations: ExaminationRepository;
 	users: UserRepository;
 	subscriptions: SubscriptionRepository;
 	studentSelections: StudentSelectionRepository;

@@ -46,12 +46,13 @@ async function runScheduler(container: AppContainer): Promise<void> {
 	if (schedulerRunning || stopping) return;
 	schedulerRunning = true;
 	try {
-		const [reminders, summaries] = await Promise.all([
+		const [reminders, examReminders, summaries] = await Promise.all([
 			container.scheduleClassReminders.execute(),
+			container.scheduleExamReminders.execute(),
 			container.generateDailySummaries.execute(),
 		]);
 		logger.info(
-			{ reminders, summaries },
+			{ reminders, examReminders, summaries },
 			'Notification scheduling cycle completed',
 		);
 	} catch (error) {

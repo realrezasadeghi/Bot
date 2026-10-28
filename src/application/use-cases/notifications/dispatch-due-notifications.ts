@@ -21,6 +21,7 @@ import type {
 import {
 	formatClassReminder,
 	formatDailySummary,
+	formatExamReminder,
 } from '../../services/notification-content.js';
 import { toScheduleEntryDto } from '../../services/schedule-mapper.js';
 
@@ -122,8 +123,17 @@ export class DispatchDueNotifications {
 		const user = await repositories.users.findUserById(job.userId);
 		if (!user) return { kind: 'cancel', reason: 'USER_NOT_FOUND' };
 
+		if (job.selectionId) {
+			return this.decideForSelection(job, user, repositories);
+		}
+
+		const subscriptionId = job.subscriptionId;
+		if (!subscriptionId) {
+			return { kind: 'cancel', reason: 'NOTIFICATION_OWNER_MISSING' };
+		}
+
 		const subscription = await repositories.subscriptions.findById(
-			job.subscriptionId,
+			subscriptionId,
 		);
 		if (!subscription?.isActive()) {
 			return { kind: 'cancel', reason: 'SUBSCRIPTION_INACTIVE' };
@@ -270,6 +280,211 @@ export class DispatchDueNotifications {
 					date: localDate.toString(),
 					entries,
 					notifyOnEmptyDays: preference.notifyOnEmptyDays,
+				}),
+				buttons: [],
+			},
+		};
+	}
+
+	private async decideForSelection(
+		job: NotificationJob,
+		user: Awaited<ReturnType<Repositories['users']['findUserById']>>,
+		repositories: Repositories,
+	): Promise<Decision> {
+		if (!user || !job.selectionId) {
+			return { kind: 'cancel', reason: 'SELECTION_OWNER_MISSING' };
+		}
+
+		const selection = await repositories.studentSelections.findById(
+			job.selectionId,
+		);
+		if (!selection || !selection.isActive || selection.userId !== user.id) {
+			return { kind: 'cancel', reason: 'SELECTION_INACTIVE' };
+		}
+
+		if (job.type === NotificationType.ExamReminder) {
+			return this.decideForExam(job, user, selection, repositories);
+		}
+		if (job.type !== NotificationType.ClassReminder) {
+			return { kind: 'cancel', reason: 'UNSUPPORTED_SELECTION_NOTIFICATION' };
+		}
+		if (!selection.classReminderEnabled) {
+			return { kind: 'cancel', reason: 'REMINDERS_DISABLED' };
+		}
+
+		let identity = await repositories.users.findIdentityById(
+			job.recipientIdentityId,
+		);
+		if (!identity || identity.userId !== user.id) {
+			identity = await repositories.users.findPreferredIdentityForUser(user.id);
+		}
+		if (!identity) return { kind: 'cancel', reason: 'NO_PLATFORM_IDENTITY' };
+
+		if (!job.occurrenceId) {
+			return { kind: 'cancel', reason: 'REMINDER_WITHOUT_OCCURRENCE' };
+		}
+
+		const occurrence = await repositories.occurrences.findById(job.occurrenceId);
+		if (!occurrence?.isActive()) {
+			return { kind: 'cancel', reason: 'OCCURRENCE_CANCELLED_OR_MISSING' };
+		}
+
+		const selectedOfferingIds =
+			await repositories.studentSelections.listSelectedOfferings(selection.id);
+		if (!selectedOfferingIds.includes(occurrence.courseOfferingId)) {
+			return { kind: 'cancel', reason: 'COURSE_NO_LONGER_SELECTED' };
+		}
+
+		const expectedStart = job.payload.startAtIso;
+		if (typeof expectedStart !== 'string') {
+			return { kind: 'cancel', reason: 'REMINDER_PAYLOAD_INVALID' };
+		}
+		const currentStart = occurrence.date.toUtcInstant(
+			occurrence.startTime,
+			user.timeZone,
+		);
+		if (currentStart.toISOString() !== expectedStart) {
+			return { kind: 'cancel', reason: 'OCCURRENCE_RESCHEDULED' };
+		}
+		if (currentStart.getTime() <= this.deps.clock.now().getTime()) {
+			return { kind: 'cancel', reason: 'REMINDER_TOO_LATE' };
+		}
+
+		const views = await repositories.occurrences.listForCourses(
+			[occurrence.courseOfferingId],
+			occurrence.date,
+			occurrence.date,
+		);
+		const view = views.find(
+			(candidate) => candidate.occurrence.id === occurrence.id,
+		);
+		if (!view) {
+			return { kind: 'cancel', reason: 'OCCURRENCE_DETAILS_MISSING' };
+		}
+
+		const entry = toScheduleEntryDto(view);
+		if (entry.status !== 'SCHEDULED') {
+			return { kind: 'cancel', reason: 'OCCURRENCE_CANCELLED' };
+		}
+
+		return {
+			kind: 'send',
+			providerHint: identity.platform,
+			message: {
+				recipient: {
+					platform: identity.platform,
+					botScope: identity.botScope,
+					externalUserId: identity.externalUserId,
+					externalChatId: identity.externalChatId,
+				},
+				text: formatClassReminder({
+					entry,
+					offsetMinutes: selection.reminderOffsetMinutes,
+				}),
+				buttons: [],
+			},
+		};
+	}
+
+	private async decideForExam(
+		job: NotificationJob,
+		user: NonNullable<
+			Awaited<ReturnType<Repositories['users']['findUserById']>>
+		>,
+		selection: NonNullable<
+			Awaited<
+				ReturnType<Repositories['studentSelections']['findActiveByUserId']>
+			>
+		>,
+		repositories: Repositories,
+	): Promise<Decision> {
+		const examinationId = job.payload.examinationId;
+		if (typeof examinationId !== 'string') {
+			return { kind: 'cancel', reason: 'EXAM_PAYLOAD_INVALID' };
+		}
+
+		const selectedOfferingIds =
+			await repositories.studentSelections.listSelectedOfferings(selection.id);
+		if (selectedOfferingIds.length === 0) {
+			return { kind: 'cancel', reason: 'NO_SELECTED_COURSES' };
+		}
+
+		const examinations =
+			await repositories.examinations.listByCourseOfferingIds(
+				selectedOfferingIds,
+			);
+		const examination = examinations.find(
+			(candidate) => candidate.id === examinationId,
+		);
+		if (!examination?.isActive() || !examination.startTime) {
+			return { kind: 'cancel', reason: 'EXAMINATION_CANCELLED_OR_MISSING' };
+		}
+		if (!selectedOfferingIds.includes(examination.courseOfferingId)) {
+			return { kind: 'cancel', reason: 'COURSE_NO_LONGER_SELECTED' };
+		}
+
+		const expectedStart = job.payload.startAtIso;
+		if (typeof expectedStart !== 'string') {
+			return { kind: 'cancel', reason: 'EXAM_PAYLOAD_INVALID' };
+		}
+		const currentStart = examination.examDate.toUtcInstant(
+			examination.startTime,
+			user.timeZone,
+		);
+		if (currentStart.toISOString() !== expectedStart) {
+			return { kind: 'cancel', reason: 'EXAMINATION_RESCHEDULED' };
+		}
+		if (currentStart.getTime() <= this.deps.clock.now().getTime()) {
+			return { kind: 'cancel', reason: 'REMINDER_TOO_LATE' };
+		}
+
+		let identity = await repositories.users.findIdentityById(
+			job.recipientIdentityId,
+		);
+		if (!identity || identity.userId !== user.id) {
+			identity = await repositories.users.findPreferredIdentityForUser(user.id);
+		}
+		if (!identity) return { kind: 'cancel', reason: 'NO_PLATFORM_IDENTITY' };
+
+		const offerings = await repositories.academic.listCourseOfferingsByIds([
+			examination.courseOfferingId,
+		]);
+		const view = offerings[0];
+		if (!view) return { kind: 'cancel', reason: 'COURSE_OFFERING_MISSING' };
+
+		const offsetMinutes =
+			typeof job.payload.offsetMinutes === 'number'
+				? job.payload.offsetMinutes
+				: 0;
+
+		return {
+			kind: 'send',
+			providerHint: identity.platform,
+			message: {
+				recipient: {
+					platform: identity.platform,
+					botScope: identity.botScope,
+					externalUserId: identity.externalUserId,
+					externalChatId: identity.externalChatId,
+				},
+				text: formatExamReminder({
+					examination: {
+						examinationId: examination.id,
+						courseOfferingId: examination.courseOfferingId,
+						courseCode: view.course.code,
+						courseTitle: view.course.title,
+						sectionCode: view.courseOffering.sectionCode,
+						instructorNames: view.instructors.map(
+							(instructor) => instructor.fullName,
+						),
+						examDate: examination.examDate.toString(),
+						startTime: examination.startTime.toString(),
+						endTime: examination.endTime?.toString() ?? null,
+						location: examination.location,
+						sourceIdentifier: examination.sourceIdentifier,
+						status: 'SCHEDULED',
+					},
+					offsetMinutes,
 				}),
 				buttons: [],
 			},

@@ -1,5 +1,7 @@
 import type { ClassOccurrenceStatus } from '../../../../domain/academic/class-occurrence.js';
 import { ClassOccurrence } from '../../../../domain/academic/class-occurrence.js';
+import { CourseExamination } from '../../../../domain/academic/examination.js';
+import type { ExaminationStatus } from '../../../../domain/academic/examination.js';
 import {
 	AcademicLevel,
 	AcademicProgram,
@@ -43,6 +45,7 @@ import type {
 	academicPrograms,
 	academicTerms,
 	classOccurrences,
+	courseExaminations,
 	courseOfferings,
 	courses,
 	deliveryAttempts,
@@ -268,6 +271,7 @@ export function toNotificationJob(
 		type: row.type as NotificationType,
 		userId: row.userId,
 		subscriptionId: row.subscriptionId,
+		selectionId: row.selectionId,
 		occurrenceId: row.occurrenceId,
 		recipientIdentityId: row.recipientIdentityId,
 		dueAt: row.dueAt,
@@ -311,4 +315,20 @@ export function toSyncRun(row: Row<typeof syncRuns>): SyncRun {
 		stats: row.stats as SyncRun['stats'],
 		errorSummary: row.errorSummary,
 	};
+}
+
+export function toCourseExamination(
+	row: Row<typeof courseExaminations>,
+): CourseExamination {
+	return CourseExamination.create({
+		id: row.id,
+		courseOfferingId: row.courseOfferingId,
+		examDate: LocalDate.parse(row.examDate),
+		startTime:
+			row.startMinute === null ? null : LocalTime.fromMinutes(row.startMinute),
+		endTime: row.endMinute === null ? null : LocalTime.fromMinutes(row.endMinute),
+		location: row.location,
+		sourceIdentifier: row.sourceIdentifier,
+		status: row.status as ExaminationStatus,
+	});
 }

@@ -41,3 +41,18 @@ export interface SubscriptionView {
 	preference: NotificationPreference;
 	programOffering: ProgramOfferingView;
 }
+
+export interface ExaminationEntryDto {
+	examinationId: string;
+	courseOfferingId: string;
+	courseCode: string;
+	courseTitle: string;
+	sectionCode: string | null;
+	instructorNames: string[];
+	examDate: string;
+	startTime: string | null;
+	endTime: string | null;
+	location: string | null;
+	sourceIdentifier: string | null;
+	status: 'SCHEDULED' | 'CANCELLED';
+}

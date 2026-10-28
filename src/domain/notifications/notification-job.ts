@@ -21,7 +21,8 @@ export class NotificationJob {
 		readonly id: string,
 		readonly type: NotificationType,
 		readonly userId: string,
-		readonly subscriptionId: string,
+		readonly subscriptionId: string | null,
+		readonly selectionId: string | null,
 		readonly occurrenceId: string | null,
 		readonly recipientIdentityId: string,
 		readonly dueAt: Date,
@@ -42,7 +43,8 @@ export class NotificationJob {
 		id: string;
 		type: NotificationType;
 		userId: string;
-		subscriptionId: string;
+		subscriptionId?: string | null;
+		selectionId?: string | null;
 		occurrenceId?: string | null;
 		recipientIdentityId: string;
 		dueAt: Date;
@@ -56,8 +58,12 @@ export class NotificationJob {
 		if (!input.userId.trim()) {
 			throw new ValidationError('NotificationJob.userId is required');
 		}
-		if (!input.subscriptionId.trim()) {
-			throw new ValidationError('NotificationJob.subscriptionId is required');
+		const subscriptionId = input.subscriptionId?.trim() || null;
+		const selectionId = input.selectionId?.trim() || null;
+		if ((subscriptionId === null) === (selectionId === null)) {
+			throw new ValidationError(
+				'NotificationJob requires exactly one of subscriptionId or selectionId',
+			);
 		}
 		if (!input.recipientIdentityId.trim()) {
 			throw new ValidationError('NotificationJob.recipientIdentityId is required');
@@ -79,7 +85,8 @@ export class NotificationJob {
 			input.id.trim(),
 			input.type,
 			input.userId.trim(),
-			input.subscriptionId.trim(),
+			subscriptionId,
+			selectionId,
 			input.occurrenceId?.trim() || null,
 			input.recipientIdentityId.trim(),
 			input.dueAt,
@@ -101,7 +108,8 @@ export class NotificationJob {
 		id: string;
 		type: NotificationType;
 		userId: string;
-		subscriptionId: string;
+		subscriptionId: string | null;
+		selectionId: string | null;
 		occurrenceId: string | null;
 		recipientIdentityId: string;
 		dueAt: Date;
@@ -122,6 +130,7 @@ export class NotificationJob {
 			input.type,
 			input.userId,
 			input.subscriptionId,
+			input.selectionId,
 			input.occurrenceId,
 			input.recipientIdentityId,
 			input.dueAt,
@@ -257,6 +266,7 @@ export class NotificationJob {
 			this.type,
 			this.userId,
 			this.subscriptionId,
+			this.selectionId,
 			this.occurrenceId,
 			this.recipientIdentityId,
 			this.dueAt,

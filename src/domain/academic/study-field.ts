@@ -98,6 +98,8 @@ export class UserAcademicSelection {
 		readonly studyFieldId: string | null,
 		readonly academicTermId: string | null,
 		readonly isActive: boolean,
+		readonly classReminderEnabled: boolean,
+		readonly reminderOffsetMinutes: number,
 		readonly updatedAt: Date,
 	) {}
 
@@ -108,8 +110,21 @@ export class UserAcademicSelection {
 		studyFieldId?: string | null;
 		academicTermId?: string | null;
 		isActive?: boolean;
+		classReminderEnabled?: boolean;
+		reminderOffsetMinutes?: number;
 		updatedAt?: Date;
 	}): UserAcademicSelection {
+		const reminderOffsetMinutes = input.reminderOffsetMinutes ?? 60;
+		if (
+			!Number.isInteger(reminderOffsetMinutes) ||
+			reminderOffsetMinutes < 0 ||
+			reminderOffsetMinutes > 720
+		) {
+			throw new ValidationError(
+				'UserAcademicSelection.reminderOffsetMinutes must be between 0 and 720',
+			);
+		}
+
 		return new UserAcademicSelection(
 			requireNonEmpty(input.id, 'UserAcademicSelection.id'),
 			requireNonEmpty(input.userId, 'UserAcademicSelection.userId'),
@@ -117,6 +132,8 @@ export class UserAcademicSelection {
 			input.studyFieldId ?? null,
 			input.academicTermId ?? null,
 			input.isActive ?? true,
+			input.classReminderEnabled ?? true,
+			reminderOffsetMinutes,
 			input.updatedAt ?? new Date(),
 		);
 	}
@@ -129,6 +146,8 @@ export class UserAcademicSelection {
 			studyFieldId: this.studyFieldId,
 			academicTermId: this.academicTermId,
 			isActive: this.isActive,
+			classReminderEnabled: this.classReminderEnabled,
+			reminderOffsetMinutes: this.reminderOffsetMinutes,
 			updatedAt: new Date(),
 		});
 	}
@@ -141,6 +160,8 @@ export class UserAcademicSelection {
 			studyFieldId: fieldId,
 			academicTermId: this.academicTermId,
 			isActive: this.isActive,
+			classReminderEnabled: this.classReminderEnabled,
+			reminderOffsetMinutes: this.reminderOffsetMinutes,
 			updatedAt: new Date(),
 		});
 	}
@@ -153,7 +174,29 @@ export class UserAcademicSelection {
 			studyFieldId: this.studyFieldId,
 			academicTermId: termId,
 			isActive: this.isActive,
+			classReminderEnabled: this.classReminderEnabled,
+			reminderOffsetMinutes: this.reminderOffsetMinutes,
 			updatedAt: new Date(),
+		});
+	}
+
+	withNotificationPreferences(input: {
+		classReminderEnabled?: boolean;
+		reminderOffsetMinutes?: number;
+		updatedAt?: Date;
+	}): UserAcademicSelection {
+		return UserAcademicSelection.create({
+			id: this.id,
+			userId: this.userId,
+			academicLevelId: this.academicLevelId,
+			studyFieldId: this.studyFieldId,
+			academicTermId: this.academicTermId,
+			isActive: this.isActive,
+			classReminderEnabled:
+				input.classReminderEnabled ?? this.classReminderEnabled,
+			reminderOffsetMinutes:
+				input.reminderOffsetMinutes ?? this.reminderOffsetMinutes,
+			updatedAt: input.updatedAt ?? new Date(),
 		});
 	}
 
@@ -165,6 +208,8 @@ export class UserAcademicSelection {
 			studyFieldId: this.studyFieldId,
 			academicTermId: this.academicTermId,
 			isActive: false,
+			classReminderEnabled: this.classReminderEnabled,
+			reminderOffsetMinutes: this.reminderOffsetMinutes,
 			updatedAt: new Date(),
 		});
 	}

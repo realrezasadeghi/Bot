@@ -29,11 +29,17 @@ export interface NotificationJobRepository {
 		now: Date,
 		reason: string,
 	): Promise<number>;
+	cancelPendingBySelection(
+		selectionId: string,
+		now: Date,
+		reason: string,
+	): Promise<number>;
 	cancelPendingByIdempotencyKeys(
 		idempotencyKeys: ReadonlyArray<string>,
 		now: Date,
 		reason: string,
 	): Promise<number>;
 	listPendingBySubscription(subscriptionId: string): Promise<NotificationJob[]>;
+	listPendingBySelection(selectionId: string): Promise<NotificationJob[]>;
 	recordDeliveryAttempt(attempt: DeliveryAttempt): Promise<void>;
 }

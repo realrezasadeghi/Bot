@@ -9,6 +9,7 @@ import {
 	MeetingPattern,
 	ProgramOffering,
 } from '../../../domain/academic/entities.js';
+import { CourseExamination } from '../../../domain/academic/examination.js';
 import type { ScheduleExceptionType } from '../../../domain/academic/schedule-exception.js';
 import { ScheduleException } from '../../../domain/academic/schedule-exception.js';
 import {
@@ -87,6 +88,7 @@ export class SynchronizeAcademicData {
 			courseOfferings: 0,
 			meetingPatterns: 0,
 			scheduleExceptions: 0,
+			examinations: 0,
 			occurrencesCreated: 0,
 			occurrencesUpdated: 0,
 			occurrencesCancelled: 0,
@@ -396,6 +398,48 @@ export class SynchronizeAcademicData {
 					await repositories.academic.deleteScheduleExceptionsNotIn(term.id, [
 						...syncedExceptionKeys,
 					]);
+				}
+
+				const examinations = snapshot.examinations
+					.map((examinationDto) => {
+						const courseOfferingId = offeringIdByExternalKey.get(
+							examinationDto.courseOfferingExternalKey,
+						);
+						if (!courseOfferingId) {
+							throw new UniversitySnapshotValidationError(
+								`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
+							);
+						}
+						return CourseExamination.create({
+							id: this.deps.ids.next(),
+							courseOfferingId,
+							examDate: LocalDate.parse(examinationDto.examDate),
+							startTime: examinationDto.startTime
+								? LocalTime.parse(examinationDto.startTime)
+								: null,
+							endTime: examinationDto.endTime
+								? LocalTime.parse(examinationDto.endTime)
+								: null,
+							location: examinationDto.location,
+							sourceIdentifier:
+								examinationDto.sourceIdentifier ??
+								examinationDto.externalKey ??
+								null,
+						});
+					});
+
+				if (examinations.length > 0) {
+					await repositories.examinations.upsertMany(examinations);
+					stats.examinations += examinations.length;
+				}
+
+				if (snapshot.complete && syncedCourseOfferingIds.length > 0) {
+					await repositories.examinations.deactivateByCourseOfferingIdsNotIn(
+						syncedCourseOfferingIds,
+						examinations
+							.map((examination) => examination.sourceIdentifier)
+							.filter((identifier): identifier is string => identifier !== null),
+					);
 				}
 			});
 

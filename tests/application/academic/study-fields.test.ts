@@ -5,6 +5,7 @@ import { GetStudentTimetable } from '../../../src/application/use-cases/academic
 import { GetStudyFields } from '../../../src/application/use-cases/academic/get-study-fields.js';
 import { SaveStudentCourseSelection } from '../../../src/application/use-cases/academic/save-student-course-selection.js';
 import { UpdateStudentCourseSelection } from '../../../src/application/use-cases/academic/update-student-course-selection.js';
+import { AcademicLevel, AcademicTerm } from '../../../src/domain/academic/entities.js';
 import {
 	StudyField,
 	UserAcademicSelection,
@@ -146,6 +147,103 @@ function buildClock() {
 	};
 }
 
+const selectionLevel = AcademicLevel.create({
+	id: 'level-1',
+	code: 'UNDERGRADUATE',
+	title: 'Undergraduate',
+});
+
+const selectionTerm = AcademicTerm.create({
+	id: 'term-1',
+	externalCode: '2026-1',
+	title: 'First Term 2026',
+	isActive: true,
+});
+
+const selectionField = StudyField.create({
+	id: 'field-1',
+	name: 'Computer Engineering',
+	code: 'COMP-ENG',
+	academicLevelId: 'level-1',
+	isActive: true,
+	sortOrder: 1,
+});
+
+function offeringView(id: string, externalKey: string) {
+	return {
+		courseOffering: {
+			id,
+			courseId: `course-${id}`,
+			termId: 'term-1',
+			programOfferingId: null,
+			sectionCode: null,
+			instructorIds: [],
+			location: null,
+			externalKey,
+			isActive: true,
+		},
+		course: {
+			id: `course-${id}`,
+			code: `COMP-${id}`,
+			title: `Course ${id}`,
+			units: null,
+		},
+		instructors: [],
+		patterns: [],
+	};
+}
+
+function validSelectionContext(extra: {
+	studentSelections?: Record<string, unknown>;
+	users?: Record<string, unknown>;
+	academic?: Record<string, unknown>;
+	studyFields?: Record<string, unknown>;
+	studyFieldOfferingMappings?: Record<string, unknown>;
+	jobs?: Record<string, unknown>;
+} = {}) {
+	const offeringIds = ['co-1', 'co-2', 'co-3'];
+	return {
+		users: {
+			findUserById: vi.fn(async () => ({ id: 'user-1', timeZone: 'UTC' })),
+			...extra.users,
+		},
+		academic: {
+			listLevels: vi.fn(async () => [selectionLevel]),
+			getTermById: vi.fn(async () => selectionTerm),
+			listCourseOfferingsByIds: vi.fn(async (ids: string[]) =>
+				ids.map((id) => offeringView(id, `ext-${id}`)),
+			),
+			listCourseOfferingsByTerm: vi.fn(async () =>
+				offeringIds.map((id) => offeringView(id, `ext-${id}`)),
+			),
+			...extra.academic,
+		},
+		studyFields: {
+			findById: vi.fn(async () => selectionField),
+			listByLevel: vi.fn(async () => [selectionField]),
+			...extra.studyFields,
+		},
+		studyFieldOfferingMappings: {
+			listByField: vi.fn(async () =>
+				offeringIds.map((id) => ({
+					id: `mapping-${id}`,
+					studyFieldId: 'field-1',
+					courseOfferingExternalKey: `ext-${id}`,
+				})),
+			),
+			...extra.studyFieldOfferingMappings,
+		},
+		studentSelections: {
+			cancelPendingBySelection: vi.fn(async () => 0),
+			...extra.studentSelections,
+		},
+		jobs: {
+			cancelPendingBySelection: vi.fn(async () => 0),
+			...extra.jobs,
+		},
+	};
+}
+
 describe('GetStudyFields', () => {
 	it('returns active study fields for a level', async () => {
 		const field = StudyField.create({
@@ -222,19 +320,21 @@ describe('GetStudyFields', () => {
 		const result = await useCase.execute();
 
 		expect(result).toHaveLength(1);
-		expect(repositories.studyFields.listByLevel).toHaveBeenCalledWith('');
+		expect(repositories.studyFields.listByLevel).toHaveBeenCalledWith();
 	});
 });
 
 describe('SaveStudentCourseSelection', () => {
 	it('creates a new selection when none exists', async () => {
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () => null),
-				create: vi.fn(async () => undefined),
-				replaceSelectedOfferings: vi.fn(async () => undefined),
-			},
-		});
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => null),
+					create: vi.fn(async () => undefined),
+					replaceSelectedOfferings: vi.fn(async () => undefined),
+				},
+			}),
+		);
 
 		const useCase = new SaveStudentCourseSelection({
 			uow: buildUow(repositories),
@@ -272,13 +372,15 @@ describe('SaveStudentCourseSelection', () => {
 			academicTermId: null,
 		});
 
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () => existingSelection),
-				update: vi.fn(async () => undefined),
-				replaceSelectedOfferings: vi.fn(async () => undefined),
-			},
-		});
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => existingSelection),
+					update: vi.fn(async () => undefined),
+					replaceSelectedOfferings: vi.fn(async () => undefined),
+				},
+			}),
+		);
 
 		const useCase = new SaveStudentCourseSelection({
 			uow: buildUow(repositories),
@@ -289,6 +391,7 @@ describe('SaveStudentCourseSelection', () => {
 		await useCase.execute({
 			userId: 'user-1',
 			studyFieldId: 'field-1',
+			academicTermId: 'term-1',
 			selectedCourseOfferingIds: ['co-1'],
 		});
 
@@ -312,13 +415,15 @@ describe('SaveStudentCourseSelection', () => {
 			academicTermId: 'term-1',
 		});
 
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () => existingSelection),
-				update: vi.fn(async () => undefined),
-				replaceSelectedOfferings: vi.fn(async () => undefined),
-			},
-		});
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => existingSelection),
+					update: vi.fn(async () => undefined),
+					replaceSelectedOfferings: vi.fn(async () => undefined),
+				},
+			}),
+		);
 
 		const useCase = new SaveStudentCourseSelection({
 			uow: buildUow(repositories),
@@ -351,15 +456,17 @@ describe('UpdateStudentCourseSelection', () => {
 			academicTermId: 'term-1',
 		});
 
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () => existingSelection),
-				listSelectedOfferings: vi.fn(async () => ['co-1', 'co-2']),
-				addSelectedOffering: vi.fn(async () => undefined),
-				removeSelectedOffering: vi.fn(async () => undefined),
-				update: vi.fn(async () => undefined),
-			},
-		});
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => existingSelection),
+					listSelectedOfferings: vi.fn(async () => ['co-1', 'co-2']),
+					addSelectedOffering: vi.fn(async () => undefined),
+					removeSelectedOffering: vi.fn(async () => undefined),
+					update: vi.fn(async () => undefined),
+				},
+			}),
+		);
 
 		const useCase = new UpdateStudentCourseSelection({
 			uow: buildUow(repositories),
@@ -548,45 +655,27 @@ describe('GetAvailableCourseOfferings', () => {
 			academicTermId: 'term-1',
 		});
 
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () => selection),
-			},
-			studyFieldOfferingMappings: {
-				listByField: vi.fn(async () => [
-					{
-						id: 'mapping-1',
-						studyFieldId: 'field-1',
-						courseOfferingExternalKey: 'co-ext-1',
-					},
-				]),
-			},
-			academic: {
-				listCourseOfferingsByTerm: vi.fn(async () => [
-					{
-						courseOffering: {
-							id: 'co-1',
-							courseId: 'course-1',
-							termId: 'term-1',
-							programOfferingId: null,
-							sectionCode: null,
-							instructorIds: [],
-							location: null,
-							externalKey: 'co-ext-1',
-							isActive: true,
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => selection),
+				},
+				studyFieldOfferingMappings: {
+					listByField: vi.fn(async () => [
+						{
+							id: 'mapping-1',
+							studyFieldId: 'field-1',
+							courseOfferingExternalKey: 'ext-co-1',
 						},
-						course: {
-							id: 'course-1',
-							code: 'COMP-101',
-							title: 'Programming Fundamentals',
-							units: null,
-						},
-						instructors: [],
-						patterns: [],
-					},
-				]),
-			},
-		});
+					]),
+				},
+				academic: {
+					listCourseOfferingsByTerm: vi.fn(async () => [
+						offeringView('co-1', 'ext-co-1'),
+					]),
+				},
+			}),
+		);
 
 		const useCase = new GetAvailableCourseOfferings(buildUow(repositories));
 		const result = await useCase.execute('user-1');
@@ -609,25 +698,140 @@ describe('GetAvailableCourseOfferings', () => {
 	});
 
 	it('returns empty when no field mappings', async () => {
-		const repositories = buildRepositories({
-			studentSelections: {
-				findActiveByUserId: vi.fn(async () =>
-					UserAcademicSelection.create({
-						id: 'selection-1',
-						userId: 'user-1',
-						studyFieldId: 'field-1',
-						academicTermId: 'term-1',
-					}),
-				),
-			},
-			studyFieldOfferingMappings: {
-				listByField: vi.fn(async () => []),
-			},
-		});
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () =>
+						UserAcademicSelection.create({
+							id: 'selection-1',
+							userId: 'user-1',
+							studyFieldId: 'field-1',
+							academicTermId: 'term-1',
+						}),
+					),
+				},
+				studyFieldOfferingMappings: {
+					listByField: vi.fn(async () => []),
+				},
+			}),
+		);
 
 		const useCase = new GetAvailableCourseOfferings(buildUow(repositories));
 		const result = await useCase.execute('user-1');
 
 		expect(result).toHaveLength(0);
+	});
+});
+
+
+describe('Student course selection validation', () => {
+	it('deduplicates selected course offering IDs', async () => {
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => null),
+					create: vi.fn(async () => undefined),
+					replaceSelectedOfferings: vi.fn(async () => undefined),
+				},
+			}),
+		);
+
+		const useCase = new SaveStudentCourseSelection({
+			uow: buildUow(repositories),
+			ids: buildIds(),
+			clock: buildClock(),
+		});
+
+		await useCase.execute({
+			userId: 'user-1',
+			academicLevelId: 'level-1',
+			studyFieldId: 'field-1',
+			academicTermId: 'term-1',
+			selectedCourseOfferingIds: ['co-1', 'co-1', 'co-2'],
+		});
+
+		expect(
+			repositories.studentSelections.replaceSelectedOfferings,
+		).toHaveBeenCalledWith(expect.any(String), ['co-1', 'co-2']);
+	});
+
+	it('rejects course offerings that are not mapped to the field', async () => {
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => null),
+					create: vi.fn(async () => undefined),
+					replaceSelectedOfferings: vi.fn(async () => undefined),
+				},
+				academic: {
+					listCourseOfferingsByIds: vi.fn(async () => [
+						offeringView('co-1', 'unmapped-ext'),
+					]),
+				},
+				studyFieldOfferingMappings: {
+					listByField: vi.fn(async () => []),
+				},
+			}),
+		);
+
+		const useCase = new SaveStudentCourseSelection({
+			uow: buildUow(repositories),
+			ids: buildIds(),
+			clock: buildClock(),
+		});
+
+		await expect(
+			useCase.execute({
+				userId: 'user-1',
+				academicLevelId: 'level-1',
+				studyFieldId: 'field-1',
+				academicTermId: 'term-1',
+				selectedCourseOfferingIds: ['co-1'],
+			}),
+		).rejects.toThrow('is not mapped to study field');
+	});
+
+	it('rejects adding an offering outside the selected term', async () => {
+		const existingSelection = UserAcademicSelection.create({
+			id: 'selection-1',
+			userId: 'user-1',
+			academicLevelId: 'level-1',
+			studyFieldId: 'field-1',
+			academicTermId: 'term-1',
+		});
+
+		const repositories = buildRepositories(
+			validSelectionContext({
+				studentSelections: {
+					findActiveByUserId: vi.fn(async () => existingSelection),
+					listSelectedOfferings: vi.fn(async () => []),
+					update: vi.fn(async () => undefined),
+				},
+				academic: {
+					listCourseOfferingsByIds: vi.fn(async () => [
+						{
+							...offeringView('co-1', 'ext-co-1'),
+							courseOffering: {
+								...offeringView('co-1', 'ext-co-1').courseOffering,
+								termId: 'term-2',
+							},
+						},
+					]),
+				},
+			}),
+		);
+
+		const useCase = new UpdateStudentCourseSelection({
+			uow: buildUow(repositories),
+			ids: buildIds(),
+			clock: buildClock(),
+		});
+
+		await expect(
+			useCase.execute({
+				userId: 'user-1',
+				addCourseOfferingIds: ['co-1'],
+			}),
+		).rejects.toThrow('does not belong to the selected term');
 	});
 });

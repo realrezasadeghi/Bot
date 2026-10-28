@@ -4,6 +4,7 @@ import type {
 } from '../../../../application/ports/outbound/unit-of-work.js';
 import { PostgresAcademicCatalogRepository } from './academic-catalog-repository.js';
 import type { AppDatabase } from './db.js';
+import { PostgresExaminationRepository } from './examination-repository.js';
 import { PostgresExternalIdentifierRepository } from './external-identifier-repository.js';
 import { PostgresNotificationJobRepository } from './notification-job-repository.js';
 import { PostgresClassOccurrenceRepository } from './occurrence-repository.js';
@@ -18,6 +19,7 @@ export function createRepositories(db: AppDatabase): Repositories {
 	return {
 		academic: new PostgresAcademicCatalogRepository(db),
 		externalIds: new PostgresExternalIdentifierRepository(db),
+		examinations: new PostgresExaminationRepository(db),
 		users: new PostgresUserRepository(db),
 		subscriptions: new PostgresSubscriptionRepository(db),
 		studentSelections: new PostgresStudentSelectionRepository(db),

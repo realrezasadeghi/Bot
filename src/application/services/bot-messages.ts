@@ -3,9 +3,17 @@ import type {
 	AcademicTerm,
 	FieldOfStudy,
 } from '../../domain/academic/entities.js';
+import type {
+	StudyField,
+	UserAcademicSelection,
+} from '../../domain/academic/study-field.js';
 import { LocalDate } from '../../domain/shared/local-date.js';
 import { WEEKDAY_LABELS_FA } from '../../domain/shared/weekday.js';
 import type { OutboundButton } from '../dto/messaging.js';
+import type {
+	CourseOfferingView,
+	ExaminationEntryDto,
+} from '../dto/read-models.js';
 import type {
 	DailyScheduleDto,
 	ProgramSummaryDto,
@@ -27,7 +35,9 @@ const MAIN_MENU: OutboundButton[][] = [
 		{ text: 'برنامه هفتگی', callbackData: 'menu:week' },
 	],
 	[{ text: 'انتخاب یا تغییر برنامه', callbackData: 'menu:subscribe' }],
+	[{ text: 'انتخاب رشته و دروس', callbackData: 'menu:study' }],
 	[{ text: 'برنامه فعلی', callbackData: 'menu:program' }],
+	[{ text: 'امتحان‌های پیش رو', callbackData: 'menu:exams' }],
 	[{ text: 'تنظیم اعلان‌ها', callbackData: 'menu:prefs' }],
 	[{ text: 'راهنما', callbackData: 'menu:help' }],
 ];
@@ -74,8 +84,10 @@ export function renderHelp(): BotContent {
 			'/start شروع و منوی اصلی',
 			'/today برنامه امروز',
 			'/week برنامه هفتگی',
+			'/exams امتحان‌های پیش رو',
 			'/program برنامه فعلی',
 			'/subscribe انتخاب یا تغییر برنامه',
+			'/study انتخاب رشته، ترم و دروس',
 			'/customize انتخاب دروس',
 			'/prefs تنظیم اعلان‌ها',
 			'/unsubscribe لغو اشتراک',
@@ -100,6 +112,36 @@ export function renderDailySchedule(schedule: DailyScheduleDto): BotContent {
 				`برنامه ${weekdayOf(schedule.date)} ${schedule.date}`,
 				'',
 				...schedule.classes.map((entry) => `- ${formatEntry(entry)}`),
+			].join('\n'),
+		),
+		buttons: MAIN_MENU,
+	};
+}
+
+export function renderExaminations(
+	examinations: ReadonlyArray<ExaminationEntryDto>,
+): BotContent {
+	if (examinations.length === 0) {
+		return {
+			text: 'امتحانی برای دروس انتخاب‌شده ثبت نشده است.',
+			buttons: MAIN_MENU,
+		};
+	}
+
+	return {
+		text: truncateMessage(
+			[
+				'امتحان‌های پیش رو',
+				'',
+				...examinations.map((examination) => {
+					const time = examination.startTime
+						? ` | ${examination.startTime}${examination.endTime ? `-${examination.endTime}` : ''}`
+						: '';
+					const location = examination.location
+						? ` | ${examination.location}`
+						: '';
+					return `- ${examination.examDate} | ${examination.courseTitle} (${examination.courseCode})${time}${location}`;
+				}),
 			].join('\n'),
 		),
 		buttons: MAIN_MENU,
@@ -252,6 +294,109 @@ export function renderTerms(terms: ReadonlyArray<AcademicTerm>): BotContent {
 					callbackData: `term:${term.id}`,
 				},
 			]),
+			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
+		],
+	};
+}
+
+export function renderStudyLevels(
+	levels: ReadonlyArray<AcademicLevel>,
+): BotContent {
+	return {
+		text: 'مقطع تحصیلی خود را انتخاب کنید:',
+		buttons: [
+			...levels.slice(0, 20).map((level) => [
+				{ text: level.title, callbackData: `sf:level:${level.id}` },
+			]),
+			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
+		],
+	};
+}
+
+export function renderStudyFields(
+	fields: ReadonlyArray<StudyField>,
+): BotContent {
+	return {
+		text: 'رشته تحصیلی خود را انتخاب کنید:',
+		buttons: [
+			...fields
+				.slice(0, 20)
+				.map((field) => [
+					{ text: field.name, callbackData: `sf:field:${field.id}` },
+				]),
+			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
+		],
+	};
+}
+
+export function renderStudyTerms(
+	terms: ReadonlyArray<AcademicTerm>,
+): BotContent {
+	return {
+		text: 'ترم تحصیلی را انتخاب کنید:',
+		buttons: [
+			...terms.slice(0, 20).map((term) => [
+				{
+					text: `${term.title}${term.isActive ? '' : ' (غیرفعال)'}`,
+					callbackData: `sf:term:${term.id}`,
+				},
+			]),
+			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
+		],
+	};
+}
+
+export function renderCourseOfferings(
+	offerings: ReadonlyArray<CourseOfferingView>,
+	selectedCourseOfferingIds: ReadonlySet<string>,
+): BotContent {
+	const rows: OutboundButton[][] = offerings.slice(0, 30).map((view) => [
+		{
+			text: `${selectedCourseOfferingIds.has(view.courseOffering.id) ? '[x]' : '[ ]'} ${view.course.code} - ${view.course.title}${view.courseOffering.sectionCode ? ` (${view.courseOffering.sectionCode})` : ''}`,
+			callbackData: `sf:toggle:${view.courseOffering.id}`,
+		},
+	]);
+	rows.push([{ text: 'ذخیره انتخاب دروس', callbackData: 'sf:save' }]);
+	rows.push([{ text: 'بازگشت به منو', callbackData: 'menu:home' }]);
+
+	return {
+		text: [
+			'دروس مورد نظر خود را انتخاب کنید.',
+			selectedCourseOfferingIds.size === 0
+				? 'هیچ درسی انتخاب نشده است.'
+				: `${selectedCourseOfferingIds.size} درس انتخاب شده است.`,
+		].join('\n'),
+		buttons: rows,
+	};
+}
+
+export function renderStudentPreferences(
+	selection: UserAcademicSelection,
+): BotContent {
+	return {
+		text: [
+			'تنظیمات اعلان‌های برنامه انتخابی',
+			'',
+			`یادآوری کلاس: ${selection.classReminderEnabled ? 'فعال' : 'غیرفعال'}`,
+			`زمان یادآوری: ${selection.reminderOffsetMinutes} دقیقه قبل از کلاس`,
+		].join('\n'),
+		buttons: [
+			[
+				{
+					text: selection.classReminderEnabled
+						? 'غیرفعال کردن یادآوری'
+						: 'فعال کردن یادآوری',
+					callbackData: 'spref:toggle:reminder',
+				},
+			],
+			[
+				{ text: '۱۵ دقیقه قبل', callbackData: 'spref:offset:15' },
+				{ text: '۳۰ دقیقه قبل', callbackData: 'spref:offset:30' },
+			],
+			[
+				{ text: '۶۰ دقیقه قبل', callbackData: 'spref:offset:60' },
+				{ text: '۱۲۰ دقیقه قبل', callbackData: 'spref:offset:120' },
+			],
 			[{ text: 'بازگشت به منو', callbackData: 'menu:home' }],
 		],
 	};

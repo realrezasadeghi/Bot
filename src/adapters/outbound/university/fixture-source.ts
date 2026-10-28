@@ -24,6 +24,7 @@ function normalizeFixture(raw: RawSnapshot): UniversityAcademicSnapshot {
 					? new Date(raw.fetchedAt)
 					: new Date(),
 		complete: raw.complete === true,
+		examinations: raw.examinations ?? [],
 	};
 }
 

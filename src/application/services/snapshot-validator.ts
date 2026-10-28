@@ -1,3 +1,4 @@
+import { CourseExamination } from '../../domain/academic/examination.js';
 import {
 	ScheduleException,
 	type ScheduleExceptionType,
@@ -263,6 +264,53 @@ export function validateUniversitySnapshot(
 		} catch (error) {
 			issues.push(
 				`Schedule exception for ${exception.courseOfferingExternalKey} is invalid: ${
+					error instanceof ValidationError ? error.message : 'unknown error'
+				}`,
+			);
+		}
+	}
+
+	const examinationKeys = snapshot.examinations
+		.map((examination) => examination.externalKey)
+		.filter((key): key is string => key !== null);
+	requireUnique('examination', examinationKeys, issues);
+
+	for (const examination of snapshot.examinations) {
+		if (!courseOfferingKeySet.has(examination.courseOfferingExternalKey)) {
+			issues.push(
+				`Examination references unknown course offering ${examination.courseOfferingExternalKey}`,
+			);
+			continue;
+		}
+		const examDate = checkLocalDate(
+			examination.examDate,
+			`Examination for ${examination.courseOfferingExternalKey}`,
+			issues,
+		);
+		const startTime = checkLocalTime(
+			examination.startTime,
+			`Examination for ${examination.courseOfferingExternalKey} start`,
+			issues,
+		);
+		const endTime = checkLocalTime(
+			examination.endTime,
+			`Examination for ${examination.courseOfferingExternalKey} end`,
+			issues,
+		);
+		if (!examDate) continue;
+		try {
+			CourseExamination.create({
+				id: examination.externalKey ?? 'validation',
+				courseOfferingId: examination.courseOfferingExternalKey,
+				examDate,
+				startTime,
+				endTime,
+				location: examination.location,
+				sourceIdentifier: examination.sourceIdentifier,
+			});
+		} catch (error) {
+			issues.push(
+				`Examination for ${examination.courseOfferingExternalKey} is invalid: ${
 					error instanceof ValidationError ? error.message : 'unknown error'
 				}`,
 			);

@@ -1,5 +1,8 @@
-import { and, eq } from 'drizzle-orm';
-import type { StudentSelectionRepository } from '../../../../application/ports/outbound/student-selection-repository.js';
+import { and, eq, inArray } from 'drizzle-orm';
+import type {
+	ActiveStudentSelection,
+	StudentSelectionRepository,
+} from '../../../../application/ports/outbound/student-selection-repository.js';
 import { UserAcademicSelection } from '../../../../domain/academic/study-field.js';
 import type { AppDatabase } from './db.js';
 import {
@@ -19,6 +22,8 @@ function toUserAcademicSelection(
 		studyFieldId: row.studyFieldId,
 		academicTermId: row.academicTermId,
 		isActive: row.isActive,
+		classReminderEnabled: row.classReminderEnabled,
+		reminderOffsetMinutes: row.reminderOffsetMinutes,
 		updatedAt: row.updatedAt,
 	});
 }
@@ -40,6 +45,8 @@ export class PostgresStudentSelectionRepository
 				studyFieldId: selection.studyFieldId,
 				academicTermId: selection.academicTermId,
 				isActive: selection.isActive,
+				classReminderEnabled: selection.classReminderEnabled,
+				reminderOffsetMinutes: selection.reminderOffsetMinutes,
 				updatedAt: selection.updatedAt,
 			})
 			.returning();
@@ -57,6 +64,8 @@ export class PostgresStudentSelectionRepository
 				studyFieldId: selection.studyFieldId,
 				academicTermId: selection.academicTermId,
 				isActive: selection.isActive,
+				classReminderEnabled: selection.classReminderEnabled,
+				reminderOffsetMinutes: selection.reminderOffsetMinutes,
 				updatedAt: selection.updatedAt,
 			})
 			.where(eq(studentAcademicSelections.id, selection.id))
@@ -90,6 +99,37 @@ export class PostgresStudentSelectionRepository
 			.limit(1);
 		if (!row) return null;
 		return toUserAcademicSelection(row);
+	}
+
+	async listActive(): Promise<ActiveStudentSelection[]> {
+		const rows = await this.db
+			.select()
+			.from(studentAcademicSelections)
+			.where(eq(studentAcademicSelections.isActive, true));
+
+		if (rows.length === 0) return [];
+
+		const offeringRows = await this.db
+			.select()
+			.from(studentSelectedOfferings)
+			.where(
+				inArray(
+					studentSelectedOfferings.selectionId,
+					rows.map((row) => row.id),
+				),
+			);
+
+		const offeringsBySelection = new Map<string, string[]>();
+		for (const offeringRow of offeringRows) {
+			const list = offeringsBySelection.get(offeringRow.selectionId) ?? [];
+			list.push(offeringRow.courseOfferingId);
+			offeringsBySelection.set(offeringRow.selectionId, list);
+		}
+
+		return rows.map((row) => ({
+			selection: toUserAcademicSelection(row),
+			courseOfferingIds: offeringsBySelection.get(row.id) ?? [],
+		}));
 	}
 
 	async deactivateByUserId(userId: string): Promise<void> {

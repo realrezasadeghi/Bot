@@ -15,6 +15,7 @@ export interface SyncRunStats {
 	courseOfferings: number;
 	meetingPatterns: number;
 	scheduleExceptions: number;
+	examinations: number;
 	occurrencesCreated: number;
 	occurrencesUpdated: number;
 	occurrencesCancelled: number;

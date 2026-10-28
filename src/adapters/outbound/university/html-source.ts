@@ -8,6 +8,7 @@ import type {
 	UniversityLevelDto,
 	UniversityProgramDto,
 	UniversityProgramOfferingDto,
+	UniversityExaminationDto,
 	UniversityScheduleExceptionDto,
 	UniversityTermDto,
 } from '../../../application/dto/university.js';
@@ -653,6 +654,7 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 
 		const courseOfferings: UniversityCourseOfferingDto[] = [];
 		const scheduleExceptions: UniversityScheduleExceptionDto[] = [];
+		const examinations: UniversityExaminationDto[] = [];
 
 		for (const row of rows) {
 			const course = courseByName.get(row.courseName);
@@ -695,16 +697,15 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			courseOfferings.push(offering);
 
 			if (row.exam.date) {
-				scheduleExceptions.push({
-					externalKey: null,
+				const sourceIdentifier = `exam-${offering.externalKey}`;
+				examinations.push({
+					externalKey: sourceIdentifier,
 					courseOfferingExternalKey: offering.externalKey,
-					meetingPatternIndex: null,
-					date: row.exam.date,
-					type: 'TIME_CHANGED',
-					newStartTime: row.exam.startTime ?? null,
-					newEndTime: row.exam.endTime ?? null,
-					newLocation: null,
-					reason: `Exam scheduled for ${row.exam.date}${row.exam.weekday ? ` (${row.exam.weekday})` : ''}`,
+					examDate: row.exam.date,
+					startTime: row.exam.startTime ?? null,
+					endTime: row.exam.endTime ?? null,
+					location: null,
+					sourceIdentifier,
 				});
 			}
 		}
@@ -724,6 +725,7 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			instructors: instructorEntities,
 			courseOfferings,
 			scheduleExceptions,
+			examinations,
 			warnings,
 		};
 	}
@@ -751,6 +753,7 @@ export class HTMLUniversitySource implements UniversityAcademicSource {
 			instructors: [],
 			courseOfferings: [],
 			scheduleExceptions: [],
+			examinations: [],
 			warnings,
 		};
 	}

@@ -22,6 +22,16 @@ async function resolveEffectiveCourseIds(
 	const user = await repositories.users.findUserById(userId);
 	if (!user) throw new NotFoundError(`User ${userId} not found`);
 
+	const selection =
+		await repositories.studentSelections.findActiveByUserId(userId);
+	if (selection) {
+		return {
+			timeZone: user.timeZone,
+			courseOfferingIds:
+				await repositories.studentSelections.listSelectedOfferings(selection.id),
+		};
+	}
+
 	const subscription =
 		await repositories.subscriptions.findActiveByUserId(userId);
 	if (!subscription) {
