@@ -1,8 +1,9 @@
 node_modules
 dist
 coverage
+.codebase-memory
+.git
 .env
 .env.*
 !.env.example
 tmp
-.git
