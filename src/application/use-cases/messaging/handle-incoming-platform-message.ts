@@ -173,10 +173,7 @@ export class HandleIncomingPlatformMessage {
 					repositories.studentSelections.findActiveByUserId(userId),
 				);
 				if (selection) {
-					return this.toMessage(
-						renderStudentPreferences(selection),
-						recipient,
-					);
+					return this.toMessage(renderStudentPreferences(selection), recipient);
 				}
 				const subscription = await this.deps.getCurrentSubscription.execute(userId);
 				if (!subscription) {
@@ -368,12 +365,7 @@ export class HandleIncomingPlatformMessage {
 		}
 
 		if (action === 'spref') {
-			return this.handleStudentPreferenceCallback(
-				userId,
-				event,
-				recipient,
-				rest,
-			);
+			return this.handleStudentPreferenceCallback(userId, event, recipient, rest);
 		}
 
 		if (action === 'pref') {
@@ -505,9 +497,7 @@ export class HandleIncomingPlatformMessage {
 			state.data.termId
 		) {
 			const selected = new Set(
-				(state.data.selectedCourseOfferingIds ?? '')
-					.split(',')
-					.filter(Boolean),
+				(state.data.selectedCourseOfferingIds ?? '').split(',').filter(Boolean),
 			);
 			if (operation === 'toggle' && value) {
 				if (selected.has(value)) selected.delete(value);
@@ -555,7 +545,7 @@ export class HandleIncomingPlatformMessage {
 
 	private async handleStudentPreferenceCallback(
 		userId: string,
-		event: IncomingPlatformEvent,
+		_event: IncomingPlatformEvent,
 		recipient: OutboundRecipient,
 		parts: string[],
 	): Promise<OutboundMessage> {
@@ -567,18 +557,22 @@ export class HandleIncomingPlatformMessage {
 			if (!current) {
 				return this.toMessage(this.needSubscriptionContent(), recipient);
 			}
-			const updated =
-				await this.deps.updateStudentNotificationPreferences.execute(userId, {
+			const updated = await this.deps.updateStudentNotificationPreferences.execute(
+				userId,
+				{
 					classReminderEnabled: !current.classReminderEnabled,
-				});
+				},
+			);
 			return this.toMessage(renderStudentPreferences(updated), recipient);
 		}
 
 		if (operation === 'offset' && value) {
-			const updated =
-				await this.deps.updateStudentNotificationPreferences.execute(userId, {
+			const updated = await this.deps.updateStudentNotificationPreferences.execute(
+				userId,
+				{
 					reminderOffsetMinutes: Number(value),
-				});
+				},
+			);
 			return this.toMessage(renderStudentPreferences(updated), recipient);
 		}
 

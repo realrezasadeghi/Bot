@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, notInArray, sql } from 'drizzle-orm';
 import type { ExaminationRepository } from '../../../../application/ports/outbound/examination-repository.js';
 import {
-	CourseExamination,
+	type CourseExamination,
 	ExaminationStatus,
 } from '../../../../domain/academic/examination.js';
 import type { LocalDate } from '../../../../domain/shared/local-date.js';
@@ -58,7 +58,10 @@ export class PostgresExaminationRepository implements ExaminationRepository {
 			.select()
 			.from(courseExaminations)
 			.where(inArray(courseExaminations.courseOfferingId, [...courseOfferingIds]))
-			.orderBy(asc(courseExaminations.examDate), asc(courseExaminations.startMinute));
+			.orderBy(
+				asc(courseExaminations.examDate),
+				asc(courseExaminations.startMinute),
+			);
 		return rows.map(toCourseExamination);
 	}
 
@@ -78,7 +81,10 @@ export class PostgresExaminationRepository implements ExaminationRepository {
 					lte(courseExaminations.examDate, to.toString()),
 				),
 			)
-			.orderBy(asc(courseExaminations.examDate), asc(courseExaminations.startMinute));
+			.orderBy(
+				asc(courseExaminations.examDate),
+				asc(courseExaminations.startMinute),
+			);
 		return rows.map(toCourseExamination);
 	}
 
@@ -93,9 +99,7 @@ export class PostgresExaminationRepository implements ExaminationRepository {
 		];
 		if (keepSourceIdentifiers.length > 0) {
 			conditions.push(
-				notInArray(courseExaminations.sourceIdentifier, [
-					...keepSourceIdentifiers,
-				]),
+				notInArray(courseExaminations.sourceIdentifier, [...keepSourceIdentifiers]),
 			);
 		}
 		const rows = await this.db

@@ -29,10 +29,10 @@ export class GetAvailableCourseOfferings {
 				repositories.studyFields.findById(fieldId),
 				repositories.academic.getTermById(termId),
 			]);
-			if (!field || !field.isActive) {
+			if (!field?.isActive) {
 				throw new NotFoundError(`Study field ${fieldId} is not available`);
 			}
-			if (!term || !term.isActive) {
+			if (!term?.isActive) {
 				throw new NotFoundError(`Academic term ${termId} is not available`);
 			}
 

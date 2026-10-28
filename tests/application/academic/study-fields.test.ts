@@ -5,7 +5,10 @@ import { GetStudentTimetable } from '../../../src/application/use-cases/academic
 import { GetStudyFields } from '../../../src/application/use-cases/academic/get-study-fields.js';
 import { SaveStudentCourseSelection } from '../../../src/application/use-cases/academic/save-student-course-selection.js';
 import { UpdateStudentCourseSelection } from '../../../src/application/use-cases/academic/update-student-course-selection.js';
-import { AcademicLevel, AcademicTerm } from '../../../src/domain/academic/entities.js';
+import {
+	AcademicLevel,
+	AcademicTerm,
+} from '../../../src/domain/academic/entities.js';
 import {
 	StudyField,
 	UserAcademicSelection,
@@ -31,16 +34,16 @@ function buildRepositories(
 			listMeetingPatternsByCourseOfferingIds: vi.fn(async () => []),
 			listScheduleExceptionsByCourseOfferingIds: vi.fn(async () => []),
 			listCourseOfferingIdsByTerm: vi.fn(async () => []),
-			upsertLevel: vi.fn(async () => undefined as any),
-			upsertFieldOfStudy: vi.fn(async () => undefined as any),
-			upsertTerm: vi.fn(async () => undefined as any),
-			upsertProgram: vi.fn(async () => undefined as any),
-			upsertProgramOffering: vi.fn(async () => undefined as any),
-			upsertCourse: vi.fn(async () => undefined as any),
-			upsertInstructor: vi.fn(async () => undefined as any),
-			upsertCourseOffering: vi.fn(async () => undefined as any),
-			upsertMeetingPattern: vi.fn(async () => undefined as any),
-			upsertScheduleException: vi.fn(async () => undefined as any),
+			upsertLevel: vi.fn(async () => undefined),
+			upsertFieldOfStudy: vi.fn(async () => undefined),
+			upsertTerm: vi.fn(async () => undefined),
+			upsertProgram: vi.fn(async () => undefined),
+			upsertProgramOffering: vi.fn(async () => undefined),
+			upsertCourse: vi.fn(async () => undefined),
+			upsertInstructor: vi.fn(async () => undefined),
+			upsertCourseOffering: vi.fn(async () => undefined),
+			upsertMeetingPattern: vi.fn(async () => undefined),
+			upsertScheduleException: vi.fn(async () => undefined),
 			deactivateMeetingPatternsNotIn: vi.fn(async () => []),
 			deactivateCourseOfferingsNotIn: vi.fn(async () => []),
 			deleteScheduleExceptionsNotIn: vi.fn(async () => 0),
@@ -55,26 +58,26 @@ function buildRepositories(
 			findIdentityById: vi.fn(async () => null),
 			findIdentitiesForUser: vi.fn(async () => []),
 			findPreferredIdentityForUser: vi.fn(async () => null),
-			createUser: vi.fn(async () => undefined as any),
-			updateUser: vi.fn(async () => undefined as any),
-			createIdentity: vi.fn(async () => undefined as any),
-			updateIdentity: vi.fn(async () => undefined as any),
+			createUser: vi.fn(async () => undefined),
+			updateUser: vi.fn(async () => undefined),
+			createIdentity: vi.fn(async () => undefined),
+			updateIdentity: vi.fn(async () => undefined),
 			findIdentityByIdWithUser: vi.fn(async () => null),
 			listIdentitiesForUser: vi.fn(async () => []),
 		},
 		subscriptions: {
-			create: vi.fn(async () => undefined as any),
-			update: vi.fn(async () => undefined as any),
+			create: vi.fn(async () => undefined),
+			update: vi.fn(async () => undefined),
 			findById: vi.fn(async () => null),
 			findActiveByUserId: vi.fn(async () => null),
 			listActive: vi.fn(async () => []),
 			deactivateOtherActiveSubscriptions: vi.fn(async () => 0),
 			getPreferenceBySubscriptionId: vi.fn(async () => null),
-			upsertPreference: vi.fn(async () => undefined as any),
+			upsertPreference: vi.fn(async () => undefined),
 		},
 		studentSelections: {
-			create: vi.fn(async () => undefined as any),
-			update: vi.fn(async () => undefined as any),
+			create: vi.fn(async () => undefined),
+			update: vi.fn(async () => undefined),
 			findActiveByUserId: vi.fn(async () => null),
 			findById: vi.fn(async () => null),
 			deactivateByUserId: vi.fn(async () => undefined),
@@ -84,8 +87,8 @@ function buildRepositories(
 			replaceSelectedOfferings: vi.fn(async () => undefined),
 		},
 		studyFields: {
-			create: vi.fn(async () => undefined as any),
-			update: vi.fn(async () => undefined as any),
+			create: vi.fn(async () => undefined),
+			update: vi.fn(async () => undefined),
 			findById: vi.fn(async () => null),
 			findByCode: vi.fn(async () => null),
 			listByLevel: vi.fn(async () => []),
@@ -93,21 +96,21 @@ function buildRepositories(
 			deactivate: vi.fn(async () => undefined),
 		},
 		studyFieldOfferingMappings: {
-			create: vi.fn(async () => undefined as any),
+			create: vi.fn(async () => undefined),
 			deleteByField: vi.fn(async () => undefined),
 			deleteByOfferingExternalKey: vi.fn(async () => undefined),
 			listByField: vi.fn(async () => []),
 			listByOfferingExternalKey: vi.fn(async () => []),
 		},
 		occurrences: {
-			upsertMany: vi.fn(async () => undefined as any),
+			upsertMany: vi.fn(async () => undefined),
 			findById: vi.fn(async () => null),
 			listForCourses: vi.fn(async () => []),
 			listFutureScheduledForCourses: vi.fn(async () => []),
 			cancelFutureNotInKeys: vi.fn(async () => []),
 		},
 		jobs: {
-			enqueue: vi.fn(async () => ({ created: false, job: null as any })),
+			enqueue: vi.fn(async () => ({ created: false, job: null })),
 			findById: vi.fn(async () => null),
 			findByIdForUpdate: vi.fn(async () => null),
 			claimDue: vi.fn(async () => []),
@@ -193,14 +196,16 @@ function offeringView(id: string, externalKey: string) {
 	};
 }
 
-function validSelectionContext(extra: {
-	studentSelections?: Record<string, unknown>;
-	users?: Record<string, unknown>;
-	academic?: Record<string, unknown>;
-	studyFields?: Record<string, unknown>;
-	studyFieldOfferingMappings?: Record<string, unknown>;
-	jobs?: Record<string, unknown>;
-} = {}) {
+function validSelectionContext(
+	extra: {
+		studentSelections?: Record<string, unknown>;
+		users?: Record<string, unknown>;
+		academic?: Record<string, unknown>;
+		studyFields?: Record<string, unknown>;
+		studyFieldOfferingMappings?: Record<string, unknown>;
+		jobs?: Record<string, unknown>;
+	} = {},
+) {
 	const offeringIds = ['co-1', 'co-2', 'co-3'];
 	return {
 		users: {
@@ -722,7 +727,6 @@ describe('GetAvailableCourseOfferings', () => {
 		expect(result).toHaveLength(0);
 	});
 });
-
 
 describe('Student course selection validation', () => {
 	it('deduplicates selected course offering IDs', async () => {

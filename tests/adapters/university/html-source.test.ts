@@ -129,26 +129,26 @@ describe('HTMLUniversitySource', () => {
 
 			expect(snapshot.courses.length).toBeGreaterThan(0);
 			const course = snapshot.courses[0];
-			expect(course.title).toContain('آزمایشگاه');
-			expect(course.externalKey).toMatch(/^course-/);
+			expect(course?.title).toContain('آزمایشگاه');
+			expect(course?.externalKey).toMatch(/^course-/);
 
 			expect(snapshot.instructors.length).toBeGreaterThan(0);
 			const instructor = snapshot.instructors[0];
-			expect(instructor.fullName).not.toContain('(حضوري)');
-			expect(instructor.externalKey).toMatch(/^instructor-/);
+			expect(instructor?.fullName).not.toContain('(حضوري)');
+			expect(instructor?.externalKey).toMatch(/^instructor-/);
 
 			expect(snapshot.levels.length).toBeGreaterThan(0);
 			const level = snapshot.levels[0];
-			expect(level.title).toBe('كارشناسي پيوسته');
-			expect(level.externalKey).toMatch(/^level-/);
+			expect(level?.title).toBe('كارشناسي پيوسته');
+			expect(level?.externalKey).toMatch(/^level-/);
 
 			expect(snapshot.courseOfferings.length).toBeGreaterThan(0);
 			const offering = snapshot.courseOfferings[0];
-			expect(offering.meetingPatterns.length).toBeGreaterThan(0);
-			expect(offering.meetingPatterns[0].weekday).toBeGreaterThanOrEqual(0);
-			expect(offering.meetingPatterns[0].weekday).toBeLessThanOrEqual(6);
-			expect(offering.meetingPatterns[0].startTime).toMatch(/^\d{2}:\d{2}$/);
-			expect(offering.meetingPatterns[0].endTime).toMatch(/^\d{2}:\d{2}$/);
+			expect(offering?.meetingPatterns.length).toBeGreaterThan(0);
+			expect(offering?.meetingPatterns[0]?.weekday).toBeGreaterThanOrEqual(0);
+			expect(offering?.meetingPatterns[0]?.weekday).toBeLessThanOrEqual(6);
+			expect(offering?.meetingPatterns[0]?.startTime).toMatch(/^\d{2}:\d{2}$/);
+			expect(offering?.meetingPatterns[0]?.endTime).toMatch(/^\d{2}:\d{2}$/);
 		});
 
 		it('parses multiple meeting patterns from one row', async () => {
@@ -225,8 +225,8 @@ describe('HTMLUniversitySource', () => {
 			expect(snapshot.complete).toBe(true);
 			expect(snapshot.courses.length).toBe(2);
 
-			expect(snapshot.courses[0].title).toContain('دوره تستی');
-			expect(snapshot.courses[1].title).toContain('دوره با اعداد');
+			expect(snapshot.courses[0]?.title).toContain('دوره تستی');
+			expect(snapshot.courses[1]?.title).toContain('دوره با اعداد');
 
 			const multiInstructor = snapshot.instructors.find((i) =>
 				i.fullName.includes('استاد دو'),
@@ -418,7 +418,7 @@ describe('HTMLUniversitySource', () => {
 		it('sends POST with form-urlencoded body and correct query params', async () => {
 			const html = await loadFixture('valid.html');
 			const fetchMock = vi.fn(
-				async () =>
+				async (_input: string | URL | Request, _init?: RequestInit) =>
 					({
 						ok: true,
 						status: 200,
@@ -446,12 +446,12 @@ describe('HTMLUniversitySource', () => {
 			expect(fetchMock).toHaveBeenCalledTimes(1);
 			const callArgs = fetchMock.mock.calls[0];
 			expect(callArgs).toBeDefined();
-			const callUrl = callArgs[0] as string;
+			const callUrl = callArgs?.[0] as string;
 			const url = new URL(callUrl);
 			expect(url.searchParams.get('custom_param')).toBe('14052');
 			expect(url.searchParams.get('r')).toBe('custom_r');
 
-			const callOptions = callArgs[1] as RequestInit;
+			const callOptions = callArgs?.[1] as RequestInit;
 			expect(callOptions.method).toBe('POST');
 			expect(callOptions.headers).toMatchObject({
 				'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -467,7 +467,7 @@ describe('HTMLUniversitySource', () => {
 		it('applies configured timeout', async () => {
 			const html = await loadFixture('valid.html');
 			const fetchMock = vi.fn(
-				async () =>
+				async (_input: string | URL | Request, _init?: RequestInit) =>
 					({
 						ok: true,
 						status: 200,
@@ -493,7 +493,7 @@ describe('HTMLUniversitySource', () => {
 
 			const callArgs = fetchMock.mock.calls[0];
 			expect(callArgs).toBeDefined();
-			const callOptions = callArgs[1] as RequestInit;
+			const callOptions = callArgs?.[1] as RequestInit;
 			const signal = callOptions.signal as AbortSignal;
 			expect(signal).toBeInstanceOf(AbortSignal);
 		});

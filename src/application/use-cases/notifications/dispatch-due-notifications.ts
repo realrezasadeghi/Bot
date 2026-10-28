@@ -132,9 +132,8 @@ export class DispatchDueNotifications {
 			return { kind: 'cancel', reason: 'NOTIFICATION_OWNER_MISSING' };
 		}
 
-		const subscription = await repositories.subscriptions.findById(
-			subscriptionId,
-		);
+		const subscription =
+			await repositories.subscriptions.findById(subscriptionId);
 		if (!subscription?.isActive()) {
 			return { kind: 'cancel', reason: 'SUBSCRIPTION_INACTIVE' };
 		}
@@ -298,7 +297,7 @@ export class DispatchDueNotifications {
 		const selection = await repositories.studentSelections.findById(
 			job.selectionId,
 		);
-		if (!selection || !selection.isActive || selection.userId !== user.id) {
+		if (!selection?.isActive || selection.userId !== user.id) {
 			return { kind: 'cancel', reason: 'SELECTION_INACTIVE' };
 		}
 
@@ -388,13 +387,9 @@ export class DispatchDueNotifications {
 
 	private async decideForExam(
 		job: NotificationJob,
-		user: NonNullable<
-			Awaited<ReturnType<Repositories['users']['findUserById']>>
-		>,
+		user: NonNullable<Awaited<ReturnType<Repositories['users']['findUserById']>>>,
 		selection: NonNullable<
-			Awaited<
-				ReturnType<Repositories['studentSelections']['findActiveByUserId']>
-			>
+			Awaited<ReturnType<Repositories['studentSelections']['findActiveByUserId']>>
 		>,
 		repositories: Repositories,
 	): Promise<Decision> {
@@ -410,9 +405,7 @@ export class DispatchDueNotifications {
 		}
 
 		const examinations =
-			await repositories.examinations.listByCourseOfferingIds(
-				selectedOfferingIds,
-			);
+			await repositories.examinations.listByCourseOfferingIds(selectedOfferingIds);
 		const examination = examinations.find(
 			(candidate) => candidate.id === examinationId,
 		);
