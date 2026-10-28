@@ -34,7 +34,7 @@ const envSchema = z.object({
 	LOG_LEVEL: z
 		.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
 		.default('info'),
-	LOG_PRETTY: booleanish.default(true),
+	LOG_PRETTY: booleanish.optional(),
 	PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
 	HTTP_BODY_LIMIT: z.string().default('1mb'),
 	ADMIN_API_TOKEN: optionalNonEmpty,
@@ -205,7 +205,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		nodeEnv: value.NODE_ENV,
 		log: {
 			level: value.LOG_LEVEL,
-			pretty: value.LOG_PRETTY,
+			pretty: value.LOG_PRETTY ?? value.NODE_ENV !== 'production',
 		},
 		http: {
 			port: value.PORT,

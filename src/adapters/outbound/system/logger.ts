@@ -30,7 +30,7 @@ export function createLogger(
 	logPretty: boolean,
 	nodeEnv: 'development' | 'production' | 'test',
 ): Logger {
-	const prettyEnabled = logPretty === true || nodeEnv !== 'production';
+	const prettyEnabled = logPretty === true && nodeEnv !== 'production';
 
 	const logger = pino({
 		level,
