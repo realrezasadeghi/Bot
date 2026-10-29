@@ -21,7 +21,9 @@ services:
     restart: unless-stopped
 
   migrate:
-    build: .
+    image: academic-scheduling-bot:local
+    build: 
+      context: .
     command: ["node", "dist/cli/migrate.js"]
     env_file:
       - .env
@@ -33,10 +35,13 @@ services:
     restart: "no"
 
   http:
-    build: .
+    image: academic-scheduling-bot:local
+    build: 
+      context: .
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-academic}:${POSTGRES_PASSWORD:-academic}@postgres:5432/${POSTGRES_DB:-academic_scheduling}
     ports:
       - "${PORT:-3000}:3000"
@@ -46,10 +51,13 @@ services:
     restart: unless-stopped
 
   worker:
-    build: .
+    image: academic-scheduling-bot:local
+    build: 
+      context: .
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-academic}:${POSTGRES_PASSWORD:-academic}@postgres:5432/${POSTGRES_DB:-academic_scheduling}
     depends_on:
       migrate:
