@@ -228,8 +228,8 @@ describe('HTMLUniversitySource', () => {
 			expect(snapshot.courses[0]?.title).toContain('دوره تستی');
 			expect(snapshot.courses[1]?.title).toContain('دوره با اعداد');
 
-			const multiInstructor = snapshot.instructors.find((i) =>
-				i.fullName.includes('استاد دو'),
+			const multiInstructor = snapshot.instructors.find(
+				(i: { fullName: string }) => i.fullName.includes('استاد دو'),
 			);
 			expect(multiInstructor).toBeDefined();
 		});
@@ -279,9 +279,9 @@ describe('HTMLUniversitySource', () => {
 
 			expect(snapshot.complete).toBe(false);
 			expect(snapshot.courseOfferings.length).toBe(0);
-			expect(snapshot.warnings.some((w) => w.includes('login or error'))).toBe(
-				true,
-			);
+			expect(
+				snapshot.warnings.some((w: string) => w.includes('login or error')),
+			).toBe(true);
 		});
 
 		it('returns incomplete snapshot for error page', async () => {
@@ -519,14 +519,24 @@ describe('HTMLUniversitySource', () => {
 			const snapshot1 = await source.fetchSnapshot(makeRequest());
 			const snapshot2 = await source.fetchSnapshot(makeRequest());
 
-			expect(snapshot1.courses.map((c) => c.externalKey).sort()).toEqual(
-				snapshot2.courses.map((c) => c.externalKey).sort(),
+			expect(
+				snapshot1.courses.map((c: { externalKey: string }) => c.externalKey).sort(),
+			).toEqual(
+				snapshot2.courses.map((c: { externalKey: string }) => c.externalKey).sort(),
 			);
-			expect(snapshot1.instructors.map((i) => i.externalKey).sort()).toEqual(
-				snapshot2.instructors.map((i) => i.externalKey).sort(),
+			expect(
+				snapshot1.instructors
+					.map((i: { externalKey: string }) => i.externalKey)
+					.sort(),
+			).toEqual(
+				snapshot2.instructors
+					.map((i: { externalKey: string }) => i.externalKey)
+					.sort(),
 			);
-			expect(snapshot1.levels.map((l) => l.externalKey).sort()).toEqual(
-				snapshot2.levels.map((l) => l.externalKey).sort(),
+			expect(
+				snapshot1.levels.map((l: { externalKey: string }) => l.externalKey).sort(),
+			).toEqual(
+				snapshot2.levels.map((l: { externalKey: string }) => l.externalKey).sort(),
 			);
 		});
 
