@@ -55,7 +55,7 @@ export default {
 			{
 				assets: ['package.json', 'pnpm-lock.yaml'],
 				// biome-ignore lint:suspicious/noTemplateCurlyInString
-				message: 'chore(release): ${version} [skip ci]\n\n${notes}\n\n${gitHead}',
+				message: 'chore(release): [skip ci]\n\n${notes}\n\n${gitHead}',
 				// biome-ignore lint:suspicious/noTemplateCurlyInString
 				tagFormat: 'v${version}',
 			},
