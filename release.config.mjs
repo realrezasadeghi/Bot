@@ -51,14 +51,15 @@ export default {
 			},
 		],
 		[
-			'@semantic-release/git',
-			{
-				assets: ['package.json', 'pnpm-lock.yaml'],
-				// biome-ignore lint:suspicious/noTemplateCurlyInString
-				message: 'chore(release): [skip ci]\n\n${notes}\n\n${gitHead}',
-				// biome-ignore lint:suspicious/noTemplateCurlyInString
-				tagFormat: 'v${version}',
-			},
+			[
+				'@semantic-release/git',
+				{
+					assets: ['package.json', 'pnpm-lock.yaml'],
+					message:
+						// biome-ignore lint:suspicious/noTemplateCurlyInString
+						'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
+				},
+			],
 		],
 		'@semantic-release/github',
 	],
