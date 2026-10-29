@@ -1,0 +1,71 @@
+import type { OutboundButton } from '../dto/messaging.js';
+
+export interface BotContent {
+	text: string;
+	buttons: OutboundButton[][];
+}
+
+const MAIN_MENU: OutboundButton[][] = [
+	[
+		{ text: 'برنامه امروز', callbackData: 'menu:today' },
+		{ text: 'برنامه هفتگی', callbackData: 'menu:week' },
+	],
+	[{ text: 'انتخاب یا تغییر برنامه', callbackData: 'menu:subscribe' }],
+	[{ text: 'انتخاب رشته و دروس', callbackData: 'menu:study' }],
+	[{ text: 'برنامه فعلی', callbackData: 'menu:program' }],
+	[{ text: 'امتحان‌های پیش رو', callbackData: 'menu:exams' }],
+	[{ text: 'تنظیم اعلان‌ها', callbackData: 'menu:prefs' }],
+	[{ text: 'راهنما', callbackData: 'menu:help' }],
+];
+
+function backToMenu(): OutboundButton[][] {
+	return [[{ text: 'بازگشت به منو', callbackData: 'menu:home' }]];
+}
+
+export function renderWelcome(): BotContent {
+	return {
+		text: [
+			'به ربات برنامه‌ریزی درسی خوش آمدید.',
+			'',
+			'برای دریافت برنامه، ابتدا یک برنامه تحصیلی انتخاب کنید.',
+			'از منوی زیر شروع کنید.',
+		].join('\n'),
+		buttons: MAIN_MENU,
+	};
+}
+export function renderMainMenu(): BotContent {
+	return {
+		text: 'منوی اصلی',
+		buttons: MAIN_MENU,
+	};
+}
+export function renderHelp(): BotContent {
+	return {
+		text: [
+			'دستورهای موجود:',
+			'/start شروع و منوی اصلی',
+			'/today برنامه امروز',
+			'/week برنامه هفتگی',
+			'/exams امتحان‌های پیش رو',
+			'/program برنامه فعلی',
+			'/subscribe انتخاب یا تغییر برنامه',
+			'/study انتخاب رشته، ترم و دروس',
+			'/customize انتخاب دروس',
+			'/prefs تنظیم اعلان‌ها',
+			'/unsubscribe لغو اشتراک',
+			'/cancel انصراف از مرحله فعلی',
+			'/help راهنما',
+		].join('\n'),
+		buttons: backToMenu(),
+	};
+}
+export function renderUnresolvedProgramGrouping(): BotContent {
+	return {
+		text: [
+			'برای این مقطع، رشته و ترم برنامه تحصیلی قابل انتخاب پیدا نشد.',
+			'منبع دانشگاه در پاسخ فعلی، گروه‌بندی برنامه/رشته کافی برای ساخت برنامه ارائه نکرده است.',
+			'این مورد به عنوان یک نیاز یکپارچه‌سازی حل‌نشده ثبت شده و نباید با داده ساختگی پر شود.',
+		].join('\n'),
+		buttons: backToMenu(),
+	};
+}
