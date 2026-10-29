@@ -15,18 +15,18 @@ A Node.js + TypeScript + Express academic scheduling bot with PostgreSQL, Drizzl
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 22 |
-| Language | TypeScript (strict) |
-| Framework | Express 5 |
-| Database | PostgreSQL 17 |
-| ORM / Migrations | Drizzle ORM / Drizzle Kit |
-| Package manager | pnpm 12 |
-| Lint / format | Biome |
-| Tests | Vitest |
-| Container | Docker (multi-stage) |
-| Registry | GitHub Container Registry (GHCR) |
+| Layer              | Technology                              |
+| ------------------ | --------------------------------------- |
+| Runtime            | Node.js 22                              |
+| Language           | TypeScript (strict)                     |
+| Framework          | Express 5                               |
+| Database           | PostgreSQL 17                           |
+| ORM / Migrations   | Drizzle ORM / Drizzle Kit               |
+| Package manager    | pnpm 12                                 |
+| Lint / format      | Biome                                   |
+| Tests              | Vitest                                  |
+| Container          | Docker (multi-stage)                    |
+| Registry           | GitHub Container Registry (GHCR)        |
 | Release automation | Semantic Release (Conventional Commits) |
 
 ## Project Structure
@@ -80,15 +80,15 @@ cp .env.example .env
 
 Key settings:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | `development`, `test`, or `production` | `development` |
-| `PORT` | HTTP server port | `3000` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://academic:academic@localhost:5432/academic_scheduling` |
-| `ADMIN_API_TOKEN` | Bearer token for `/api/admin` routes | (required in production) |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token (enables Telegram platform) | — |
-| `BALE_BOT_TOKEN` | Bale bot token (enables Bale platform) | — |
-| `UNIVERSITY_*` | University portal scraping configuration | see `.env.example` |
+| Variable             | Description                                    | Default                                                           |
+| -------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| `NODE_ENV`           | `development`, `test`, or `production`         | `development`                                                     |
+| `PORT`               | HTTP server port                               | `3000`                                                            |
+| `DATABASE_URL`       | PostgreSQL connection string                   | `postgres://academic:academic@localhost:5432/academic_scheduling` |
+| `ADMIN_API_TOKEN`    | Bearer token for `/api/admin` routes           | (required in production)                                          |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (enables Telegram platform) | —                                                                 |
+| `BALE_BOT_TOKEN`     | Bale bot token (enables Bale platform)         | —                                                                 |
+| `UNIVERSITY_*`       | University portal scraping configuration       | see `.env.example`                                                |
 
 ### 3. Set up the database
 
@@ -240,12 +240,12 @@ This project uses **Semantic Release** with **Conventional Commits**. Versions a
 
 ### Commit conventions
 
-| Commit type | SemVer bump | Example |
-|-------------|-------------|---------|
-| `fix:` | PATCH | `fix: prevent duplicate notification jobs` |
-| `feat:` | MINOR | `feat: export student schedules` |
-| `feat!:` or `BREAKING CHANGE:` | MAJOR | `feat!: change the notification API contract` |
-| `docs:`, `test:`, `chore:`, `refactor:`, `perf:` | none* | `docs: improve deployment documentation` |
+| Commit type                                      | SemVer bump | Example                                       |
+| ------------------------------------------------ | ----------- | --------------------------------------------- |
+| `fix:`                                           | PATCH       | `fix: prevent duplicate notification jobs`    |
+| `feat:`                                          | MINOR       | `feat: export student schedules`              |
+| `feat!:` or `BREAKING CHANGE:`                   | MAJOR       | `feat!: change the notification API contract` |
+| `docs:`, `test:`, `chore:`, `refactor:`, `perf:` | none*       | `docs: improve deployment documentation`      |
 
 \* `perf:` produces a PATCH release.
 
