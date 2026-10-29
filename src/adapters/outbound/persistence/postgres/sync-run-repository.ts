@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { SyncRunRepository } from '../../../../application/ports/outbound/sync-run-repository.js';
 import type {
 	SyncRun,
@@ -53,6 +53,21 @@ export class PostgresSyncRunRepository implements SyncRunRepository {
 			.select()
 			.from(syncRuns)
 			.where(eq(syncRuns.sourceKey, sourceKey))
+			.orderBy(desc(syncRuns.startedAt))
+			.limit(1);
+		return row ? toSyncRun(row) : null;
+	}
+
+	async findLatestGood(sourceKey: string): Promise<SyncRun | null> {
+		const [row] = await this.db
+			.select()
+			.from(syncRuns)
+			.where(
+				and(
+					eq(syncRuns.sourceKey, sourceKey),
+					eq(syncRuns.status, 'COMPLETED'),
+				),
+			)
 			.orderBy(desc(syncRuns.startedAt))
 			.limit(1);
 		return row ? toSyncRun(row) : null;

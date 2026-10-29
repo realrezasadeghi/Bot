@@ -30,16 +30,50 @@ import type { Logger } from '../../ports/outbound/logger.js';
 import type { UnitOfWork } from '../../ports/outbound/unit-of-work.js';
 import { validateUniversitySnapshot } from '../../services/snapshot-validator.js';
 
+/**
+ * When the new snapshot has fewer course offerings than this fraction of the
+ * last good sync, destructive reconciliation is skipped to preserve the last
+ * known good dataset. A value of 0.5 means the new snapshot must have at least
+ * half as many offerings as the last good sync before deactivating anything.
+ */
+const DESTRUCTIVE_REDUCTION_THRESHOLD = 0.5;
+
 export interface SynchronizationResult {
 	syncRunId: string;
 	status: SyncRunStatus;
 	stats: SyncRunStats;
 	warnings: string[];
 	complete: boolean;
+	reconcileAbsent: boolean;
 }
 
 function parseDate(value: string | null): LocalDate | null {
 	return value === null ? null : LocalDate.parse(value);
+}
+
+/**
+ * Decides whether destructive reconciliation (deactivating records absent from
+ * the new snapshot) is safe to apply.
+ *
+ * Destructive reconciliation is skipped when:
+ * - The snapshot is not marked complete, or
+ * - There is no previous good sync (first sync is always safe), or
+ * - The new snapshot has zero offerings when the last good sync had some, or
+ * - The new snapshot has fewer than 50% of the last good sync's offerings
+ *   (unexpectedly reduced dataset).
+ */
+function shouldAllowDestructive(
+	snapshot: UniversityAcademicSnapshot,
+	lastGoodOfferings: number,
+): boolean {
+	if (!snapshot.complete) return false;
+	if (lastGoodOfferings === 0) return true;
+	if (snapshot.courseOfferings.length === 0) return false;
+	return (
+		snapshot.courseOfferings.length /
+			lastGoodOfferings >=
+		DESTRUCTIVE_REDUCTION_THRESHOLD
+	);
 }
 
 export class SynchronizeAcademicData {
@@ -55,12 +89,38 @@ export class SynchronizeAcademicData {
 	async execute(
 		snapshot: UniversityAcademicSnapshot,
 	): Promise<SynchronizationResult> {
+		// --- Validation: reject invalid snapshots before touching data ---
 		try {
 			validateUniversitySnapshot(snapshot);
 		} catch (error) {
 			if (error instanceof UniversitySnapshotValidationError) {
+				const syncRunId = this.deps.ids.next();
+				const startedAt = this.deps.clock.now();
+				const finishedAt = this.deps.clock.now();
+
+				await this.deps.uow.run((repositories) =>
+					repositories.syncRuns.start({
+						id: syncRunId,
+						sourceKey: snapshot.sourceKey,
+						startedAt,
+					}),
+				);
+				await this.deps.uow.run((repositories) =>
+					repositories.syncRuns.finish({
+						id: syncRunId,
+						status: SyncRunStatus.Rejected,
+						finishedAt,
+						stats: null,
+						errorSummary: `Snapshot validation rejected: ${error.issues.join('; ')}`,
+					}),
+				);
+
 				this.deps.logger.error(
-					{ issues: error.issues, sourceKey: snapshot.sourceKey },
+					{
+						syncRunId,
+						sourceKey: snapshot.sourceKey,
+						issues: error.issues,
+					},
 					'University snapshot rejected before synchronization',
 				);
 			}
@@ -69,6 +129,30 @@ export class SynchronizeAcademicData {
 
 		const syncRunId = this.deps.ids.next();
 		const startedAt = this.deps.clock.now();
+
+		// --- Determine if destructive reconciliation is safe ---
+		const lastGood = await this.deps.uow.run((repositories) =>
+			repositories.syncRuns.findLatestGood(snapshot.sourceKey),
+		);
+		const lastGoodOfferings = lastGood?.stats?.courseOfferings ?? 0;
+		const allowDestructive = shouldAllowDestructive(
+			snapshot,
+			lastGoodOfferings,
+		);
+
+		if (!allowDestructive && lastGoodOfferings > 0) {
+			this.deps.logger.warn(
+				{
+					sourceKey: snapshot.sourceKey,
+					lastGoodOfferings,
+					newOfferings: snapshot.courseOfferings.length,
+					complete: snapshot.complete,
+				},
+				'Skipping destructive reconciliation: new snapshot is unexpectedly reduced; preserving last known good data',
+			);
+		}
+
+		// --- Record sync run start ---
 		await this.deps.uow.run((repositories) =>
 			repositories.syncRuns.start({
 				id: syncRunId,
@@ -138,7 +222,11 @@ export class SynchronizeAcademicData {
 					);
 					levelsByExternalKey.set(levelDto.externalKey, level);
 					stats.levels += 1;
-					await recordExternalId('ACADEMIC_LEVEL', level.id, levelDto.externalKey);
+					await recordExternalId(
+						'ACADEMIC_LEVEL',
+						level.id,
+						levelDto.externalKey,
+					);
 				}
 
 				const fieldsByExternalKey = new Map<string, FieldOfStudy>();
@@ -159,7 +247,11 @@ export class SynchronizeAcademicData {
 					);
 					fieldsByExternalKey.set(fieldDto.externalKey, field);
 					stats.fields += 1;
-					await recordExternalId('FIELD_OF_STUDY', field.id, fieldDto.externalKey);
+					await recordExternalId(
+						'FIELD_OF_STUDY',
+						field.id,
+						fieldDto.externalKey,
+					);
 				}
 
 				const programsByExternalKey = new Map<string, AcademicProgram>();
@@ -189,9 +281,12 @@ export class SynchronizeAcademicData {
 					);
 				}
 
-				const programOfferingsByExternalKey = new Map<string, ProgramOffering>();
+				const programOfferingsByExternalKey =
+					new Map<string, ProgramOffering>();
 				for (const offeringDto of snapshot.programOfferings) {
-					const program = programsByExternalKey.get(offeringDto.programExternalKey);
+					const program = programsByExternalKey.get(
+						offeringDto.programExternalKey,
+					);
 					if (!program) {
 						throw new UniversitySnapshotValidationError(
 							`Missing program ${offeringDto.programExternalKey} for program offering ${offeringDto.externalKey}`,
@@ -206,7 +301,10 @@ export class SynchronizeAcademicData {
 							title: offeringDto.title,
 						}),
 					);
-					programOfferingsByExternalKey.set(offeringDto.externalKey, offering);
+					programOfferingsByExternalKey.set(
+						offeringDto.externalKey,
+						offering,
+					);
 					stats.programOfferings += 1;
 					await recordExternalId(
 						'PROGRAM_OFFERING',
@@ -227,7 +325,11 @@ export class SynchronizeAcademicData {
 					);
 					coursesByExternalKey.set(courseDto.externalKey, course);
 					stats.courses += 1;
-					await recordExternalId('COURSE', course.id, courseDto.externalKey);
+					await recordExternalId(
+						'COURSE',
+						course.id,
+						courseDto.externalKey,
+					);
 				}
 
 				const instructorsByExternalKey = new Map<string, Instructor>();
@@ -239,7 +341,10 @@ export class SynchronizeAcademicData {
 							fullName: instructorDto.fullName,
 						}),
 					);
-					instructorsByExternalKey.set(instructorDto.externalKey, instructor);
+					instructorsByExternalKey.set(
+						instructorDto.externalKey,
+						instructor,
+					);
 					stats.instructors += 1;
 					await recordExternalId(
 						'INSTRUCTOR',
@@ -253,7 +358,9 @@ export class SynchronizeAcademicData {
 				const syncedCourseOfferingIds: string[] = [];
 
 				for (const offeringDto of snapshot.courseOfferings) {
-					const course = coursesByExternalKey.get(offeringDto.courseExternalKey);
+					const course = coursesByExternalKey.get(
+						offeringDto.courseExternalKey,
+					);
 					if (!course) {
 						throw new UniversitySnapshotValidationError(
 							`Missing course ${offeringDto.courseExternalKey} for course offering ${offeringDto.externalKey}`,
@@ -297,7 +404,10 @@ export class SynchronizeAcademicData {
 					);
 					stats.courseOfferings += 1;
 					syncedCourseOfferingIds.push(courseOffering.id);
-					offeringIdByExternalKey.set(offeringDto.externalKey, courseOffering.id);
+					offeringIdByExternalKey.set(
+						offeringDto.externalKey,
+						courseOffering.id,
+					);
 					await recordExternalId(
 						'COURSE_OFFERING',
 						courseOffering.id,
@@ -330,7 +440,7 @@ export class SynchronizeAcademicData {
 						stats.meetingPatterns += 1;
 					}
 
-					if (snapshot.complete) {
+					if (allowDestructive) {
 						await repositories.academic.deactivateMeetingPatternsNotIn(
 							courseOffering.id,
 							patternIds,
@@ -338,7 +448,10 @@ export class SynchronizeAcademicData {
 					}
 				}
 
-				if (snapshot.complete && syncedCourseOfferingIds.length > 0) {
+				if (
+					allowDestructive &&
+					syncedCourseOfferingIds.length > 0
+				) {
 					await repositories.academic.deactivateCourseOfferingsNotIn(
 						term.id,
 						syncedCourseOfferingIds,
@@ -394,48 +507,62 @@ export class SynchronizeAcademicData {
 					}
 				}
 
-				if (snapshot.complete && syncedCourseOfferingIds.length > 0) {
-					await repositories.academic.deleteScheduleExceptionsNotIn(term.id, [
-						...syncedExceptionKeys,
-					]);
+				if (
+					allowDestructive &&
+					syncedCourseOfferingIds.length > 0
+				) {
+					await repositories.academic.deleteScheduleExceptionsNotIn(
+						term.id,
+						[...syncedExceptionKeys],
+					);
 				}
 
-				const examinations = snapshot.examinations.map((examinationDto) => {
-					const courseOfferingId = offeringIdByExternalKey.get(
-						examinationDto.courseOfferingExternalKey,
-					);
-					if (!courseOfferingId) {
-						throw new UniversitySnapshotValidationError(
-							`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
+				const examinations = snapshot.examinations.map(
+					(examinationDto) => {
+						const courseOfferingId = offeringIdByExternalKey.get(
+							examinationDto.courseOfferingExternalKey,
 						);
-					}
-					return CourseExamination.create({
-						id: this.deps.ids.next(),
-						courseOfferingId,
-						examDate: LocalDate.parse(examinationDto.examDate),
-						startTime: examinationDto.startTime
-							? LocalTime.parse(examinationDto.startTime)
-							: null,
-						endTime: examinationDto.endTime
-							? LocalTime.parse(examinationDto.endTime)
-							: null,
-						location: examinationDto.location,
-						sourceIdentifier:
-							examinationDto.sourceIdentifier ?? examinationDto.externalKey ?? null,
-					});
-				});
+						if (!courseOfferingId) {
+							throw new UniversitySnapshotValidationError(
+								`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
+							);
+						}
+						return CourseExamination.create({
+							id: this.deps.ids.next(),
+							courseOfferingId,
+							examDate: LocalDate.parse(examinationDto.examDate),
+							startTime: examinationDto.startTime
+								? LocalTime.parse(examinationDto.startTime)
+								: null,
+							endTime: examinationDto.endTime
+								? LocalTime.parse(examinationDto.endTime)
+								: null,
+							location: examinationDto.location,
+							sourceIdentifier:
+								examinationDto.sourceIdentifier ??
+								examinationDto.externalKey ??
+								null,
+						});
+					},
+				);
 
 				if (examinations.length > 0) {
 					await repositories.examinations.upsertMany(examinations);
 					stats.examinations += examinations.length;
 				}
 
-				if (snapshot.complete && syncedCourseOfferingIds.length > 0) {
+				if (
+					allowDestructive &&
+					syncedCourseOfferingIds.length > 0
+				) {
 					await repositories.examinations.deactivateByCourseOfferingIdsNotIn(
 						syncedCourseOfferingIds,
 						examinations
 							.map((examination) => examination.sourceIdentifier)
-							.filter((identifier): identifier is string => identifier !== null),
+							.filter(
+								(identifier): identifier is string =>
+									identifier !== null,
+							),
 					);
 				}
 			});
@@ -452,7 +579,12 @@ export class SynchronizeAcademicData {
 			);
 
 			this.deps.logger.info(
-				{ syncRunId, stats, complete: snapshot.complete },
+				{
+					syncRunId,
+					stats,
+					complete: snapshot.complete,
+					reconcileAbsent: allowDestructive,
+				},
 				'Academic synchronization completed',
 			);
 
@@ -462,6 +594,7 @@ export class SynchronizeAcademicData {
 				stats,
 				warnings: snapshot.warnings,
 				complete: snapshot.complete,
+				reconcileAbsent: allowDestructive,
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

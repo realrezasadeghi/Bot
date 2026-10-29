@@ -3337,7 +3337,8 @@
       "values": [
         "RUNNING",
         "COMPLETED",
-        "FAILED"
+        "FAILED",
+        "REJECTED"
       ]
     }
   },

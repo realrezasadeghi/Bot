@@ -45,6 +45,19 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-academic}:${POSTGRES_PASSWORD:-academic}@postgres:5432/${POSTGRES_DB:-academic_scheduling}
     ports:
       - "${PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://127.0.0.1:3000/api/health"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s  
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -56,6 +69,7 @@ services:
       context: .
     env_file:
       - .env
+    command: ["node", "dist/bootstrap/worker.js"]  
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-academic}:${POSTGRES_PASSWORD:-academic}@postgres:5432/${POSTGRES_DB:-academic_scheduling}

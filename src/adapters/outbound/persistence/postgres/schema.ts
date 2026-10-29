@@ -59,6 +59,7 @@ export const syncRunStatusEnum = pgEnum('sync_run_status', [
 	'RUNNING',
 	'COMPLETED',
 	'FAILED',
+	'REJECTED',
 ]);
 export const externalEntityTypeEnum = pgEnum('external_entity_type', [
 	'ACADEMIC_LEVEL',

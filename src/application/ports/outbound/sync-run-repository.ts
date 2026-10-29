@@ -18,4 +18,5 @@ export interface SyncRunRepository {
 		errorSummary: string | null;
 	}): Promise<void>;
 	findLatest(sourceKey: string): Promise<SyncRun | null>;
+	findLatestGood(sourceKey: string): Promise<SyncRun | null>;
 }

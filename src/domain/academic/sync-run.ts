@@ -2,6 +2,7 @@ export enum SyncRunStatus {
 	Running = 'RUNNING',
 	Completed = 'COMPLETED',
 	Failed = 'FAILED',
+	Rejected = 'REJECTED',
 }
 
 export interface SyncRunStats {

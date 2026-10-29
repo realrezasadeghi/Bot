@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { ConfigurationError, loadConfig } from '../config/env.js';
+import { SyncRunStatus } from '../domain/academic/sync-run.js';
 import type { AppContainer } from './container.js';
 import { createAppContainer } from './container.js';
 import { syncTerm, toUniversitySourceRequest } from './sync-term.js';
@@ -22,12 +23,37 @@ async function runSync(container: AppContainer): Promise<void> {
 			container,
 			toUniversitySourceRequest(config.university),
 		);
+
+		const sync = result.synchronization;
+		if (sync.status === SyncRunStatus.Rejected) {
+			logger.warn(
+				{
+					syncRunId: sync.syncRunId,
+					status: sync.status,
+					complete: sync.complete,
+					warnings: sync.warnings.length,
+					errorSummary: 'Snapshot rejected: invalid or unexpectedly reduced data',
+				},
+				'Academic sync rejected; last known good data preserved',
+			);
+			return;
+		}
+
 		logger.info(
 			{
+				syncRunId: sync.syncRunId,
+				status: sync.status,
 				termId: result.termId,
 				complete: result.snapshot.complete,
-				occurrences: result.occurrences,
-				syncRunId: result.synchronization.syncRunId,
+				reconcileAbsent: sync.reconcileAbsent,
+				occurrences: result.occurrences
+					? {
+							created: result.occurrences.created,
+							updated: result.occurrences.updated,
+							cancelled: result.occurrences.cancelled,
+						}
+					: null,
+				stats: sync.stats,
 			},
 			'Academic sync cycle completed',
 		);
@@ -36,8 +62,10 @@ async function runSync(container: AppContainer): Promise<void> {
 			logger.warn({ error: error.message }, 'Academic sync skipped');
 		} else {
 			logger.error(
-				{ error: error instanceof Error ? error.message : String(error) },
-				'Academic sync cycle failed',
+				{
+					error: error instanceof Error ? error.message : String(error),
+				},
+				'Academic sync cycle failed; previous data preserved',
 			);
 		}
 	} finally {
@@ -121,6 +149,7 @@ function every(
 	void tick();
 }
 
+const startedAt = Date.now();
 async function main(): Promise<void> {
 	logger.info(
 		{
@@ -135,6 +164,16 @@ async function main(): Promise<void> {
 	await runSync(container);
 	await runScheduler(container);
 	await runDispatch(container);
+
+	every('heartbeat', 30_000, async () => {
+		logger.info(
+			{
+				workerId: config.worker.id,
+				uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+			},
+			'Worker heartbeat',
+		);
+	});
 
 	every('sync', config.scheduling.syncIntervalMinutes * 60_000, () =>
 		runSync(container),

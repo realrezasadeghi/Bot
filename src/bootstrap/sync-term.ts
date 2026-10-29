@@ -4,6 +4,7 @@ import type { SynchronizationResult } from '../application/use-cases/academic/sy
 import type { GenerateOccurrencesResult } from '../application/use-cases/scheduling/generate-class-occurrences.js';
 import type { AppConfig } from '../config/env.js';
 import type { AppContainer } from './container.js';
+import { SyncRunStatus } from '../domain/academic/sync-run.js';
 
 export interface SyncTermResult {
 	snapshot: UniversityAcademicSnapshot;
@@ -44,6 +45,17 @@ export async function syncTerm(
 	const synchronization =
 		await container.synchronizeAcademicData.execute(snapshot);
 
+	// A rejected snapshot (invalid or unsafe) must not trigger occurrence
+	// generation. Preserve the last known good data as-is.
+	if (synchronization.status === SyncRunStatus.Rejected) {
+		return {
+			snapshot,
+			synchronization,
+			termId: null,
+			occurrences: null,
+		};
+	}
+
 	const term = await container.uow.run((repositories) =>
 		repositories.academic.getTermByExternalCode(snapshot.term.externalCode),
 	);
@@ -57,9 +69,11 @@ export async function syncTerm(
 		};
 	}
 
+	// Only reconcile absent occurrences when destructive reconciliation was
+	// actually allowed by the synchronizer.
 	const occurrences = await container.generateClassOccurrences.execute({
 		termId: term.id,
-		reconcileAbsent: snapshot.complete,
+		reconcileAbsent: synchronization.reconcileAbsent,
 	});
 
 	return {
