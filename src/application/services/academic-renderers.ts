@@ -5,7 +5,7 @@ import type {
 } from '../../domain/academic/entities.js';
 import type { StudyField } from '../../domain/academic/study-field.js';
 import type { ProgramSummaryDto } from '../dto/schedule.js';
-import type { BotContent } from './bot-messages.js';
+import type { BotContent } from './bot-content.js';
 
 export function renderLevels(levels: ReadonlyArray<AcademicLevel>): BotContent {
 	return {

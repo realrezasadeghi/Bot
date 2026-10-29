@@ -1,7 +1,7 @@
 import type { UserAcademicSelection } from '../../domain/academic/study-field.js';
 import type { SubscriptionDto } from '../dto/schedule.js';
-import type { BotContent } from './bot-messages.js';
-import { backToMenu } from './bot-messages.js';
+import type { BotContent } from './bot-content.js';
+import { backToMenu } from './bot-content.js';
 
 export function renderSubscription(
 	subscription: SubscriptionDto | null,

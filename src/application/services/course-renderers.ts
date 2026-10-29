@@ -1,7 +1,7 @@
 import type { OutboundButton } from '../dto/messaging.js';
 import type { CourseOfferingView } from '../dto/read-models.js';
 import type { ProgramCoursesDto } from '../use-cases/subscriptions/get-subscription.js';
-import type { BotContent } from './bot-messages.js';
+import type { BotContent } from './bot-content.js';
 
 export function renderCourseOfferings(
 	offerings: ReadonlyArray<CourseOfferingView>,

@@ -1,8 +1,26 @@
+import { LocalDate } from '../../domain/shared/local-date.js';
+import { WEEKDAY_LABELS_FA } from '../../domain/shared/weekday.js';
 import type { ExaminationEntryDto } from '../dto/read-models.js';
-import type { DailyScheduleDto, WeeklyScheduleDto } from '../dto/schedule.js';
-import type { BotContent } from './bot-messages.js';
-import { formatEntry, MAIN_MENU, weekdayOf } from './bot-messages.js';
+import type {
+	DailyScheduleDto,
+	ScheduleEntryDto,
+	WeeklyScheduleDto,
+} from '../dto/schedule.js';
+import type { BotContent } from './bot-content.js';
+import { MAIN_MENU } from './bot-content.js';
 import { truncateMessage } from './notification-content.js';
+
+export function weekdayOf(date: string): string {
+	const parsed = LocalDate.tryParse(date);
+	return parsed ? WEEKDAY_LABELS_FA[parsed.weekday()] : '';
+}
+
+export function formatEntry(entry: ScheduleEntryDto): string {
+	const instructor = entry.instructorName ? ` | ${entry.instructorName}` : '';
+	const location = entry.location ? ` | ${entry.location}` : '';
+	const cancelled = entry.status === 'CANCELLED' ? ' | لغو شده' : '';
+	return `${entry.startTime}-${entry.endTime} | ${entry.courseTitle} (${entry.courseCode})${instructor}${location}${cancelled}`;
+}
 
 export function renderDailySchedule(schedule: DailyScheduleDto): BotContent {
 	if (schedule.classes.length === 0) {
