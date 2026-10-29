@@ -1,8 +1,9 @@
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createPostgresConnection } from '../../src/adapters/outbound/persistence/postgres/db.js';
 import { PostgresNotificationJobRepository } from '../../src/adapters/outbound/persistence/postgres/notification-job-repository.js';
+import { notificationJobs } from '../../src/adapters/outbound/persistence/postgres/schema.js';
 import {
 	NotificationJob,
 	NotificationJobStatus,
@@ -48,6 +49,11 @@ describe.skipIf(!databaseUrl)('PostgresNotificationJobRepository', () => {
 
 	afterAll(async () => {
 		await connection?.pool.end();
+	});
+
+	beforeEach(async () => {
+		if (!connection) return;
+		await connection.db.delete(notificationJobs);
 	});
 
 	function buildJob(
