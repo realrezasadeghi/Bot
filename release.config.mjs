@@ -6,6 +6,7 @@ export default {
 		},
 	],
 	preset: 'conventionalcommits',
+	// biome-ignore lint:suspicious/noTemplateCurlyInString
 	tagFormat: 'v${version}',
 	plugins: [
 		[
@@ -53,7 +54,9 @@ export default {
 			'@semantic-release/git',
 			{
 				assets: ['package.json', 'pnpm-lock.yaml'],
+				// biome-ignore lint:suspicious/noTemplateCurlyInString
 				message: 'chore(release): ${version} [skip ci]\n\n${notes}\n\n${gitHead}',
+				// biome-ignore lint:suspicious/noTemplateCurlyInString
 				tagFormat: 'v${version}',
 			},
 		],
