@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs format, check, lint, and typecheck before every push.
+# If any check fails, the push is aborted.
+
+set -euo pipefail
+
+echo "▶ Running pre-push checks..."
+
+echo "── format ──"
+pnpm format
+
+echo "── check ──"
+pnpm check
+
+echo "── lint ──"
+pnpm lint
+
+echo "── typecheck ──"
+pnpm typecheck
+
+echo "✅ All pre-push checks passed."
