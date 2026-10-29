@@ -1,4 +1,5 @@
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPostgresConnection } from '../../src/adapters/outbound/persistence/postgres/db.js';
 import { PostgresNotificationJobRepository } from '../../src/adapters/outbound/persistence/postgres/notification-job-repository.js';
@@ -20,9 +21,29 @@ describe.skipIf(!databaseUrl)('PostgresNotificationJobRepository', () => {
 
 	const now = new Date('2026-01-10T00:00:00.000Z');
 
+	// Fixed fixture ids so foreign-key references resolve in a fresh database.
+	const USER_ID = '11111111-1111-1111-1111-111111111111';
+	const RECIPIENT_ID = '22222222-2222-2222-2222-222222222222';
+	const SELECTION_ID = '33333333-3333-3333-3333-333333333333';
+
 	beforeAll(async () => {
 		if (!connection) return;
 		await migrate(connection.db, { migrationsFolder: 'drizzle' });
+		await connection.db.execute(sql`
+			INSERT INTO users (id, display_name, time_zone, locale)
+			VALUES (${USER_ID}, 'Test User', 'UTC', 'en-US')
+			ON CONFLICT (id) DO NOTHING
+		`);
+		await connection.db.execute(sql`
+			INSERT INTO platform_identities (id, user_id, platform, bot_scope, external_user_id)
+			VALUES (${RECIPIENT_ID}, ${USER_ID}, 'TELEGRAM', 'telegram-main', 'ext-user')
+			ON CONFLICT (id) DO NOTHING
+		`);
+		await connection.db.execute(sql`
+			INSERT INTO student_academic_selections (id, user_id, is_active)
+			VALUES (${SELECTION_ID}, ${USER_ID}, true)
+			ON CONFLICT (id) DO NOTHING
+		`);
 	});
 
 	afterAll(async () => {
@@ -35,8 +56,10 @@ describe.skipIf(!databaseUrl)('PostgresNotificationJobRepository', () => {
 		return NotificationJob.create({
 			id: crypto.randomUUID(),
 			type: NotificationType.ClassReminder,
-			userId: crypto.randomUUID(),
-			recipientIdentityId: crypto.randomUUID(),
+			userId: USER_ID,
+			recipientIdentityId: RECIPIENT_ID,
+			subscriptionId: null,
+			selectionId: SELECTION_ID,
 			dueAt: now,
 			idempotencyKey: `key-${crypto.randomUUID()}`,
 			createdAt: now,
@@ -106,16 +129,15 @@ describe.skipIf(!databaseUrl)('PostgresNotificationJobRepository', () => {
 	it('cancels pending jobs for a selection', async () => {
 		if (!repository) return;
 
-		const selectionId = crypto.randomUUID();
 		const job = buildJob({
-			selectionId,
+			selectionId: SELECTION_ID,
 			subscriptionId: null,
 			dueAt: now,
 		});
 		await repository.enqueue(job);
 
 		const cancelled = await repository.cancelPendingBySelection(
-			selectionId,
+			SELECTION_ID,
 			now,
 			'SELECTION_UPDATED',
 		);
