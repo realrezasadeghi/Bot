@@ -3,8 +3,8 @@ import type { UniversitySourceRequest } from '../application/ports/outbound/univ
 import type { SynchronizationResult } from '../application/use-cases/academic/synchronize-academic-data.js';
 import type { GenerateOccurrencesResult } from '../application/use-cases/scheduling/generate-class-occurrences.js';
 import type { AppConfig } from '../config/env.js';
-import type { AppContainer } from './container.js';
 import { SyncRunStatus } from '../domain/academic/sync-run.js';
+import type { AppContainer } from './container.js';
 
 export interface SyncTermResult {
 	snapshot: UniversityAcademicSnapshot;

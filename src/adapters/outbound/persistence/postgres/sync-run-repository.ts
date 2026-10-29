@@ -63,10 +63,7 @@ export class PostgresSyncRunRepository implements SyncRunRepository {
 			.select()
 			.from(syncRuns)
 			.where(
-				and(
-					eq(syncRuns.sourceKey, sourceKey),
-					eq(syncRuns.status, 'COMPLETED'),
-				),
+				and(eq(syncRuns.sourceKey, sourceKey), eq(syncRuns.status, 'COMPLETED')),
 			)
 			.orderBy(desc(syncRuns.startedAt))
 			.limit(1);

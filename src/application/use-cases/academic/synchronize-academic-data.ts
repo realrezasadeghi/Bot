@@ -70,8 +70,7 @@ function shouldAllowDestructive(
 	if (lastGoodOfferings === 0) return true;
 	if (snapshot.courseOfferings.length === 0) return false;
 	return (
-		snapshot.courseOfferings.length /
-			lastGoodOfferings >=
+		snapshot.courseOfferings.length / lastGoodOfferings >=
 		DESTRUCTIVE_REDUCTION_THRESHOLD
 	);
 }
@@ -135,10 +134,7 @@ export class SynchronizeAcademicData {
 			repositories.syncRuns.findLatestGood(snapshot.sourceKey),
 		);
 		const lastGoodOfferings = lastGood?.stats?.courseOfferings ?? 0;
-		const allowDestructive = shouldAllowDestructive(
-			snapshot,
-			lastGoodOfferings,
-		);
+		const allowDestructive = shouldAllowDestructive(snapshot, lastGoodOfferings);
 
 		if (!allowDestructive && lastGoodOfferings > 0) {
 			this.deps.logger.warn(
@@ -222,11 +218,7 @@ export class SynchronizeAcademicData {
 					);
 					levelsByExternalKey.set(levelDto.externalKey, level);
 					stats.levels += 1;
-					await recordExternalId(
-						'ACADEMIC_LEVEL',
-						level.id,
-						levelDto.externalKey,
-					);
+					await recordExternalId('ACADEMIC_LEVEL', level.id, levelDto.externalKey);
 				}
 
 				const fieldsByExternalKey = new Map<string, FieldOfStudy>();
@@ -247,11 +239,7 @@ export class SynchronizeAcademicData {
 					);
 					fieldsByExternalKey.set(fieldDto.externalKey, field);
 					stats.fields += 1;
-					await recordExternalId(
-						'FIELD_OF_STUDY',
-						field.id,
-						fieldDto.externalKey,
-					);
+					await recordExternalId('FIELD_OF_STUDY', field.id, fieldDto.externalKey);
 				}
 
 				const programsByExternalKey = new Map<string, AcademicProgram>();
@@ -281,12 +269,9 @@ export class SynchronizeAcademicData {
 					);
 				}
 
-				const programOfferingsByExternalKey =
-					new Map<string, ProgramOffering>();
+				const programOfferingsByExternalKey = new Map<string, ProgramOffering>();
 				for (const offeringDto of snapshot.programOfferings) {
-					const program = programsByExternalKey.get(
-						offeringDto.programExternalKey,
-					);
+					const program = programsByExternalKey.get(offeringDto.programExternalKey);
 					if (!program) {
 						throw new UniversitySnapshotValidationError(
 							`Missing program ${offeringDto.programExternalKey} for program offering ${offeringDto.externalKey}`,
@@ -301,10 +286,7 @@ export class SynchronizeAcademicData {
 							title: offeringDto.title,
 						}),
 					);
-					programOfferingsByExternalKey.set(
-						offeringDto.externalKey,
-						offering,
-					);
+					programOfferingsByExternalKey.set(offeringDto.externalKey, offering);
 					stats.programOfferings += 1;
 					await recordExternalId(
 						'PROGRAM_OFFERING',
@@ -325,11 +307,7 @@ export class SynchronizeAcademicData {
 					);
 					coursesByExternalKey.set(courseDto.externalKey, course);
 					stats.courses += 1;
-					await recordExternalId(
-						'COURSE',
-						course.id,
-						courseDto.externalKey,
-					);
+					await recordExternalId('COURSE', course.id, courseDto.externalKey);
 				}
 
 				const instructorsByExternalKey = new Map<string, Instructor>();
@@ -341,10 +319,7 @@ export class SynchronizeAcademicData {
 							fullName: instructorDto.fullName,
 						}),
 					);
-					instructorsByExternalKey.set(
-						instructorDto.externalKey,
-						instructor,
-					);
+					instructorsByExternalKey.set(instructorDto.externalKey, instructor);
 					stats.instructors += 1;
 					await recordExternalId(
 						'INSTRUCTOR',
@@ -358,9 +333,7 @@ export class SynchronizeAcademicData {
 				const syncedCourseOfferingIds: string[] = [];
 
 				for (const offeringDto of snapshot.courseOfferings) {
-					const course = coursesByExternalKey.get(
-						offeringDto.courseExternalKey,
-					);
+					const course = coursesByExternalKey.get(offeringDto.courseExternalKey);
 					if (!course) {
 						throw new UniversitySnapshotValidationError(
 							`Missing course ${offeringDto.courseExternalKey} for course offering ${offeringDto.externalKey}`,
@@ -404,10 +377,7 @@ export class SynchronizeAcademicData {
 					);
 					stats.courseOfferings += 1;
 					syncedCourseOfferingIds.push(courseOffering.id);
-					offeringIdByExternalKey.set(
-						offeringDto.externalKey,
-						courseOffering.id,
-					);
+					offeringIdByExternalKey.set(offeringDto.externalKey, courseOffering.id);
 					await recordExternalId(
 						'COURSE_OFFERING',
 						courseOffering.id,
@@ -448,10 +418,7 @@ export class SynchronizeAcademicData {
 					}
 				}
 
-				if (
-					allowDestructive &&
-					syncedCourseOfferingIds.length > 0
-				) {
+				if (allowDestructive && syncedCourseOfferingIds.length > 0) {
 					await repositories.academic.deactivateCourseOfferingsNotIn(
 						term.id,
 						syncedCourseOfferingIds,
@@ -507,62 +474,48 @@ export class SynchronizeAcademicData {
 					}
 				}
 
-				if (
-					allowDestructive &&
-					syncedCourseOfferingIds.length > 0
-				) {
-					await repositories.academic.deleteScheduleExceptionsNotIn(
-						term.id,
-						[...syncedExceptionKeys],
-					);
+				if (allowDestructive && syncedCourseOfferingIds.length > 0) {
+					await repositories.academic.deleteScheduleExceptionsNotIn(term.id, [
+						...syncedExceptionKeys,
+					]);
 				}
 
-				const examinations = snapshot.examinations.map(
-					(examinationDto) => {
-						const courseOfferingId = offeringIdByExternalKey.get(
-							examinationDto.courseOfferingExternalKey,
+				const examinations = snapshot.examinations.map((examinationDto) => {
+					const courseOfferingId = offeringIdByExternalKey.get(
+						examinationDto.courseOfferingExternalKey,
+					);
+					if (!courseOfferingId) {
+						throw new UniversitySnapshotValidationError(
+							`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
 						);
-						if (!courseOfferingId) {
-							throw new UniversitySnapshotValidationError(
-								`Missing course offering ${examinationDto.courseOfferingExternalKey} for examination`,
-							);
-						}
-						return CourseExamination.create({
-							id: this.deps.ids.next(),
-							courseOfferingId,
-							examDate: LocalDate.parse(examinationDto.examDate),
-							startTime: examinationDto.startTime
-								? LocalTime.parse(examinationDto.startTime)
-								: null,
-							endTime: examinationDto.endTime
-								? LocalTime.parse(examinationDto.endTime)
-								: null,
-							location: examinationDto.location,
-							sourceIdentifier:
-								examinationDto.sourceIdentifier ??
-								examinationDto.externalKey ??
-								null,
-						});
-					},
-				);
+					}
+					return CourseExamination.create({
+						id: this.deps.ids.next(),
+						courseOfferingId,
+						examDate: LocalDate.parse(examinationDto.examDate),
+						startTime: examinationDto.startTime
+							? LocalTime.parse(examinationDto.startTime)
+							: null,
+						endTime: examinationDto.endTime
+							? LocalTime.parse(examinationDto.endTime)
+							: null,
+						location: examinationDto.location,
+						sourceIdentifier:
+							examinationDto.sourceIdentifier ?? examinationDto.externalKey ?? null,
+					});
+				});
 
 				if (examinations.length > 0) {
 					await repositories.examinations.upsertMany(examinations);
 					stats.examinations += examinations.length;
 				}
 
-				if (
-					allowDestructive &&
-					syncedCourseOfferingIds.length > 0
-				) {
+				if (allowDestructive && syncedCourseOfferingIds.length > 0) {
 					await repositories.examinations.deactivateByCourseOfferingIdsNotIn(
 						syncedCourseOfferingIds,
 						examinations
 							.map((examination) => examination.sourceIdentifier)
-							.filter(
-								(identifier): identifier is string =>
-									identifier !== null,
-							),
+							.filter((identifier): identifier is string => identifier !== null),
 					);
 				}
 			});

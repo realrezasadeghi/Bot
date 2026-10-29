@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import pg from 'pg';
 import { createPostgresConnection } from '../adapters/outbound/persistence/postgres/db.js';
 import { loadConfig } from '../config/env.js';
-import pg from 'pg';
 
 const config = loadConfig();
 const targetUrl = config.database.url;
