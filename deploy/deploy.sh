@@ -8,12 +8,13 @@ set -Eeuo pipefail
 # --------------------------------------------------
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 COMPOSE_FILE="$PROJECT_DIR/docker-compose.production.yml"
 ENV_FILE="$PROJECT_DIR/.env"
 
 IMAGE_TAG="${1:-}"
+IMAGE_NAME="${IMAGE_NAME:-ghcr.io/realrezasadeghi/bot}"
 
 # --------------------------------------------------
 # Helpers
@@ -32,12 +33,8 @@ fail() {
 # Validate Input
 # --------------------------------------------------
 
-if [[ -z "$IMAGE_TAG" ]]; then
-    fail "Image tag is required. Usage: ./deploy/deploy.sh v0.1.2"
-fi
-
-if [[ ! "$IMAGE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-    fail "Invalid semantic version: $IMAGE_TAG"
+if [[ ! "$IMAGE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail "Invalid or missing release tag. Usage: ./deploy/deploy.sh v0.1.2"
 fi
 
 # --------------------------------------------------
@@ -45,8 +42,8 @@ fi
 # --------------------------------------------------
 
 [[ -f "$COMPOSE_FILE" ]] || fail "Production Compose file not found."
-
 [[ -f "$ENV_FILE" ]] || fail ".env file not found."
+[[ -r "$ENV_FILE" ]] || fail ".env file is not readable."
 
 # --------------------------------------------------
 # Validate Docker
@@ -63,6 +60,7 @@ docker compose version >/dev/null 2>&1 || fail "Docker Compose is unavailable."
 # --------------------------------------------------
 
 export IMAGE_TAG
+export IMAGE_NAME
 
 COMPOSE=(
     docker compose
@@ -71,32 +69,102 @@ COMPOSE=(
     -f "$COMPOSE_FILE"
 )
 
+on_error() {
+    local exit_code="${1:-1}"
+
+    trap - ERR
+
+    printf '\n[DEPLOY ERROR] Deployment failed (exit: %s)\n' "$exit_code" >&2
+
+    log "Current service status:"
+    "${COMPOSE[@]}" ps || true
+
+    log "Recent application logs:"
+    "${COMPOSE[@]}" logs --tail=80 http worker || true
+
+    exit "$exit_code"
+}
+
+trap 'on_error "$?"' ERR
+
 log "Validating production configuration..."
 
 "${COMPOSE[@]}" config -q
 
 # --------------------------------------------------
-# Pull Images
+# Validate Required Services
 # --------------------------------------------------
 
-log "Pulling Docker images for version $IMAGE_TAG..."
+SERVICES="$("${COMPOSE[@]}" config --services)"
 
-"${COMPOSE[@]}" pull
+for service in postgres migrate http worker; do
+    if ! grep -Fxq "$service" <<< "$SERVICES"; then
+        fail "Required Compose service not found: $service"
+    fi
+done
+
+# Ensure application services reference the expected GHCR image.
+EXPECTED_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+CONFIGURED_IMAGES="$("${COMPOSE[@]}" config --images)"
+
+if ! grep -Fxq "$EXPECTED_IMAGE" <<< "$CONFIGURED_IMAGES"; then
+    fail "Production Compose does not reference expected image: $EXPECTED_IMAGE"
+fi
 
 # --------------------------------------------------
-# Deploy
+# Pull Application Images
 # --------------------------------------------------
 
-log "Starting production deployment..."
+log "Pulling application image: $EXPECTED_IMAGE"
 
-"${COMPOSE[@]}" up -d
+"${COMPOSE[@]}" pull migrate http worker
+
+# --------------------------------------------------
+# Start PostgreSQL
+# --------------------------------------------------
+
+log "Starting PostgreSQL..."
+
+"${COMPOSE[@]}" up -d --wait --wait-timeout 120 postgres
+
+log "PostgreSQL is ready."
+
+# --------------------------------------------------
+# Run Database Migrations
+# --------------------------------------------------
+
+log "Running database migrations for $IMAGE_TAG..."
+
+"${COMPOSE[@]}" run --rm --no-deps migrate
+
+log "Database migrations completed successfully."
+
+# --------------------------------------------------
+# Deploy Application
+# --------------------------------------------------
+
+log "Starting HTTP and Worker services..."
+
+"${COMPOSE[@]}" up \
+    -d \
+    --no-deps \
+    --force-recreate \
+    --wait \
+    --wait-timeout 120 \
+    http worker
 
 # --------------------------------------------------
 # Deployment Status
 # --------------------------------------------------
 
-log "Current service status:"
+log "Verifying application health..."
 
 "${COMPOSE[@]}" ps
 
-log "Deployment completed for version $IMAGE_TAG."
+log "Deployment completed successfully: $IMAGE_TAG"
+
+# --------------------------------------------------
+# Cleanup
+# --------------------------------------------------
+
+trap - ERR
