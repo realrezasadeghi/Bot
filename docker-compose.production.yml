@@ -1,9 +1,19 @@
 
 name: academic-scheduling-bot
 
+# Prevent unlimited Docker log growth.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
 
+  # -----------------------------------------------
   # 1. PostgreSQL
+  # -----------------------------------------------
+
   postgres:
     image: postgres:17-alpine
 
@@ -25,9 +35,13 @@ services:
 
     restart: unless-stopped
     stop_grace_period: 1m
+    logging: *default-logging
 
 
+  # -----------------------------------------------
   # 2. Database Migration
+  # -----------------------------------------------
+
   migrate:
     image: ${IMAGE_NAME:-ghcr.io/realrezasadeghi/bot}:${IMAGE_TAG:?IMAGE_TAG is required}
 
@@ -49,9 +63,13 @@ services:
 
     restart: "no"
     init: true
+    logging: *default-logging
 
 
+  # -----------------------------------------------
   # 3. HTTP Server
+  # -----------------------------------------------
+
   http:
     image: ${IMAGE_NAME:-ghcr.io/realrezasadeghi/bot}:${IMAGE_TAG:?IMAGE_TAG is required}
 
@@ -85,9 +103,13 @@ services:
     restart: unless-stopped
     stop_grace_period: 15s
     init: true
+    logging: *default-logging
 
 
+  # -----------------------------------------------
   # 4. Background Worker
+  # -----------------------------------------------
+
   worker:
     image: ${IMAGE_NAME:-ghcr.io/realrezasadeghi/bot}:${IMAGE_TAG:?IMAGE_TAG is required}
 
@@ -110,6 +132,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     init: true
+    logging: *default-logging
 
 
 volumes:
