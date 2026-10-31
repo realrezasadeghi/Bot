@@ -9,3 +9,5 @@ coverage/
 tmp/
 *.log
 .DS_Store
+/deploy/.env
+/deploy/app.env

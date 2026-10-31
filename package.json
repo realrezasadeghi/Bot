@@ -3,7 +3,7 @@
 	"version": "0.1.1",
 	"private": true,
 	"type": "module",
-	"packageManager": "pnpm",
+	"packageManager": "pnpm@12.4.2",
 	"engines": {
 		"node": ">=22"
 	},
@@ -27,6 +27,7 @@
 		"university:inspect": "tsx src/cli/inspect-university.ts",
 		"academic:sync": "tsx src/cli/sync-academic.ts",
 		"db:migrate:runtime": "tsx src/cli/migrate.ts",
+		"db:migrate:buildtime": "node dist/cli/migrate.js",
 		"db:reset": "tsx src/cli/db-reset.ts"
 	},
 	"dependencies": {

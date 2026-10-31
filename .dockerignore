@@ -1,9 +1,35 @@
+
+# Dependencies
 node_modules
+
+# Build artifacts
 dist
 coverage
+
+# Development and local tooling
 .codebase-memory
+.vscode
+.idea
+.github
+tests
+docs
+
+# Git
 .git
+
+# Environment and secrets
 .env
 .env.*
 !.env.example
+
+# Temporary files
 tmp
+*.log
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+
+# Deploy
+deploy/.env
+deploy/app.env

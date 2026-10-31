@@ -1,43 +1,45 @@
 import 'dotenv/config';
+
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import pg from 'pg';
+
 import { createPostgresConnection } from '../adapters/outbound/persistence/postgres/db.js';
 import { loadConfig } from '../config/env.js';
 
-const config = loadConfig();
-const targetUrl = config.database.url;
-const parsed = new URL(targetUrl);
-const dbName = parsed.pathname.replace(/^\//, '') || 'postgres';
-parsed.pathname = '/postgres';
-const adminUrl = parsed.toString();
+// --------------------------------------------------
+// Migration Runner
+// --------------------------------------------------
 
-async function ensureDatabaseExists(): Promise<void> {
-	const adminPool = new pg.Pool({ connectionString: adminUrl, max: 1 });
-	try {
-		const { rows } = await adminPool.query(
-			'SELECT 1 FROM pg_database WHERE datname = $1',
-			[dbName],
-		);
-		if (rows.length === 0) {
-			await adminPool.query(`CREATE DATABASE "${dbName}"`);
-		}
-	} finally {
-		await adminPool.end();
-	}
-}
+async function main(): Promise<void> {
+	const config = loadConfig();
 
-try {
-	await ensureDatabaseExists();
 	const connection = createPostgresConnection({
-		connectionString: targetUrl,
+		connectionString: config.database.url,
 		max: 1,
 	});
+
 	try {
-		await migrate(connection.db, { migrationsFolder: 'drizzle' });
+		console.info('Starting database migrations...');
+
+		await migrate(connection.db, {
+			migrationsFolder: 'drizzle',
+		});
+
+		console.info('Database migrations completed successfully.');
 	} finally {
+		// Always close the database pool,
+		// regardless of migration success or failure.
 		await connection.pool.end();
 	}
-} catch (error) {
-	console.error(error);
-	process.exit(1);
 }
+
+// --------------------------------------------------
+// Execute
+// --------------------------------------------------
+
+main().catch((error: unknown) => {
+	console.error('Database migration failed:', error);
+
+	// Non-zero exit code allows Docker Compose,
+	// CI and deployment scripts to detect failure.
+	process.exitCode = 1;
+});
