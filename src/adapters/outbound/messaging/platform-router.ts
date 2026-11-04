@@ -14,11 +14,11 @@ export class PlatformMessagingRouter implements MessagingPort {
 		const adapter = this.adapters.get(message.recipient.platform);
 		if (!adapter) {
 			return {
-				provider: message.recipient.platform,
-				providerMessageId: null,
 				delivered: false,
 				retryable: false,
 				retryAfterMs: null,
+				providerMessageId: null,
+				provider: message.recipient.platform,
 				error: `No messaging adapter configured for ${message.recipient.platform}`,
 			};
 		}

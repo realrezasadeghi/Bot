@@ -1,3 +1,4 @@
+import type { Logger as PinoLogger } from 'pino';
 import { DefaultBotRenderer } from '../adapters/outbound/messaging/bot-renderer.js';
 import { PlatformMessagingRouter } from '../adapters/outbound/messaging/platform-router.js';
 import { TelegramCompatibleMessagingAdapter } from '../adapters/outbound/messaging/telegram-compatible.js';
@@ -9,7 +10,10 @@ import { PostgresStudyFieldRepository } from '../adapters/outbound/persistence/p
 import { PostgresUnitOfWork } from '../adapters/outbound/persistence/postgres/unit-of-work.js';
 import { SystemClock } from '../adapters/outbound/system/clock.js';
 import { UuidGenerator } from '../adapters/outbound/system/id-generator.js';
-import { createLogger } from '../adapters/outbound/system/logger.js';
+import {
+	createPinoLogger,
+	PinoLoggerAdapter,
+} from '../adapters/outbound/system/logger.js';
 import { FixtureUniversitySource } from '../adapters/outbound/university/fixture-source.js';
 import { HTMLUniversitySource } from '../adapters/outbound/university/html-source.js';
 import { UnavailableUniversitySource } from '../adapters/outbound/university/unavailable-source.js';
@@ -65,6 +69,8 @@ import { PlatformCode } from '../domain/identity/platform-identity.js';
 export interface AppContainer {
 	config: AppConfig;
 	logger: Logger;
+	/** Raw pino instance behind `logger`, shared with the HTTP request logger. */
+	pinoLogger: PinoLogger;
 	uow: PostgresUnitOfWork;
 	stateStore: PostgresConversationStateStore;
 	clock: SystemClock;
@@ -117,11 +123,12 @@ function createUniversitySource(config: AppConfig): UniversityAcademicSource {
 }
 
 export function createAppContainer(config: AppConfig): AppContainer {
-	const logger = createLogger(
+	const pinoLogger = createPinoLogger(
 		config.log.level,
 		config.log.pretty,
 		config.nodeEnv,
 	);
+	const logger = new PinoLoggerAdapter(pinoLogger);
 	const clock = new SystemClock();
 	const ids = new UuidGenerator();
 	const connection = createPostgresConnection({
@@ -311,6 +318,7 @@ export function createAppContainer(config: AppConfig): AppContainer {
 	return {
 		config,
 		logger,
+		pinoLogger,
 		uow,
 		stateStore,
 		clock,

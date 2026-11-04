@@ -25,14 +25,21 @@ export class PinoLoggerAdapter implements Logger {
 	}
 }
 
-export function createLogger(
+/**
+ * Builds the raw pino instance used for all application logging.
+ *
+ * The same instance is shared with the HTTP request logger so there is a
+ * single configuration (level, pretty transport, timestamp format) and a
+ * single output stream.
+ */
+export function createPinoLogger(
 	level: string,
 	logPretty: boolean,
 	nodeEnv: 'development' | 'production' | 'test',
-): Logger {
+): PinoLogger {
 	const prettyEnabled = logPretty === true && nodeEnv !== 'production';
 
-	const logger = pino({
+	return pino({
 		level,
 
 		serializers: {
@@ -57,6 +64,12 @@ export function createLogger(
 				}
 			: {}),
 	});
+}
 
-	return new PinoLoggerAdapter(logger);
+export function createLogger(
+	level: string,
+	logPretty: boolean,
+	nodeEnv: 'development' | 'production' | 'test',
+): Logger {
+	return new PinoLoggerAdapter(createPinoLogger(level, logPretty, nodeEnv));
 }

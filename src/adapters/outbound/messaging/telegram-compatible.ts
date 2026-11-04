@@ -46,12 +46,12 @@ export class TelegramCompatibleMessagingAdapter implements MessagingPort {
 		}/sendMessage`;
 
 		try {
+			const chatId = message.recipient.externalChatId ?? message.recipient.externalUserId;
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
-					chat_id:
-						message.recipient.externalChatId ?? message.recipient.externalUserId,
+					chat_id: chatId,
 					text: message.text,
 					reply_markup: toInlineKeyboard(message),
 				}),
@@ -70,34 +70,35 @@ export class TelegramCompatibleMessagingAdapter implements MessagingPort {
 
 			if (!response.ok || payload?.ok === false) {
 				const retryable = response.status === 429 || response.status >= 500;
+				const errorMessage =
+					payload?.description ??
+					`Messaging provider returned HTTP ${response.status}`;
 				return {
 					provider,
-					providerMessageId: null,
-					delivered: false,
 					retryable,
 					retryAfterMs,
-					error:
-						payload?.description ??
-						`Messaging provider returned HTTP ${response.status}`,
+					delivered: false,
+					error: errorMessage,
+					providerMessageId: null,
 				};
 			}
 
 			const messageId = payload?.result?.message_id;
 			return {
 				provider,
-				providerMessageId: messageId === undefined ? null : String(messageId),
+				error: null,
 				delivered: true,
 				retryable: false,
 				retryAfterMs: null,
-				error: null,
+				providerMessageId: messageId === undefined ? null : String(messageId),
 			};
 		} catch (error) {
 			return {
 				provider,
-				providerMessageId: null,
-				delivered: false,
 				retryable: true,
+				delivered: false,
 				retryAfterMs: null,
+				providerMessageId: null,
 				error: error instanceof Error ? error.message : String(error),
 			};
 		}

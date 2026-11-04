@@ -2,33 +2,29 @@ import type { NextFunction, Request, Response } from 'express';
 import { UniversitySnapshotValidationError } from '../../application/dto/university.js';
 import { ConfigurationError } from '../../config/env.js';
 import { DomainError } from '../../domain/shared/errors.js';
-import type { AppContainer } from '../container.js';
-import { serializeError } from '../serialize-error.js';
 
 /**
  * Centralized error-handling middleware.
  *
  * Maps domain errors to appropriate HTTP status codes and returns a
- * consistent JSON error body. Logs the error with request context.
+ * consistent JSON error body.
+ *
+ * The error is handed to the HTTP request logger by assigning it to
+ * `response.err`: when the response finishes, pino-http emits a single log
+ * line carrying the serialized error together with the request id, method,
+ * path, status, and duration. Logging here as well would duplicate every
+ * error entry.
  */
-export function createErrorHandler(container: AppContainer) {
+export function createErrorHandler() {
 	return (
 		error: unknown,
-		request: Request,
+		_request: Request,
 		response: Response,
 		_next: NextFunction,
 	): void => {
 		const status = httpStatusOf(error);
 		const message = error instanceof Error ? error.message : 'Unknown error';
-		container.logger.error(
-			{
-				status,
-				method: request.method,
-				path: request.originalUrl,
-				error: serializeError(error),
-			},
-			'HTTP request failed',
-		);
+		response.err = error instanceof Error ? error : new Error(String(error));
 
 		const details =
 			error instanceof UniversitySnapshotValidationError

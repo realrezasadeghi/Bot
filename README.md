@@ -286,11 +286,32 @@ docker run --rm -p 3000:3000 --env-file .env academic-scheduling-bot:local
 
 The image is multi-stage: dependencies are installed with `--prod`, TypeScript is compiled to `dist/`, and only the runtime artifacts are copied to the final image. `.env` files are excluded via `.dockerignore`.
 
+## Logging
+
+HTTP requests are logged with [pino] + [pino-http]: one correlated JSON line
+per request (request id, route, redacted headers/query/body, status,
+duration, and the serialized error on failures), levels by status
+(2xx/3xx → `info`, 4xx → `warn`, 5xx → `error`). `pino-pretty` is used in
+development and never in production.
+
+```bash
+LOG_LEVEL=info            # fatal | error | warn | info | debug | trace | silent
+LOG_REQUEST_BODY=true     # log parsed request bodies (default outside production)
+LOG_BODY_MAX_LENGTH=2048  # truncate larger bodies
+```
+
+See [docs/logging.md](docs/logging.md) for the full field reference,
+redaction rules, and production security notes.
+
+[pino]: https://github.com/pinojs/pino
+[pino-http]: https://github.com/pinojs/pino-http
+[pino-pretty]: https://github.com/pinojs/pino-pretty
+
 ## Environment Variables Reference
 
 See `.env.example` for the complete list. Key groups:
 
-- **Runtime** — `NODE_ENV`, `PORT`, `LOG_LEVEL`, `ADMIN_API_TOKEN`
+- **Runtime** — `NODE_ENV`, `PORT`, `LOG_LEVEL`, `LOG_PRETTY`, `LOG_REQUEST_BODY`, `LOG_BODY_MAX_LENGTH`, `ADMIN_API_TOKEN`
 - **Database** — `DATABASE_URL`, `DATABASE_POOL_MAX`
 - **University portal** — `UNIVERSITY_SOURCE_KEY`, `UNIVERSITY_OFFER_URL`, term codes, view state, cookies
 - **Messaging** — `TELEGRAM_BOT_TOKEN`, `BALE_BOT_TOKEN` and related base URLs/scopes

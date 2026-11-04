@@ -35,6 +35,16 @@ const envSchema = z.object({
 		.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
 		.default('info'),
 	LOG_PRETTY: booleanish.optional(),
+	// Log parsed request bodies. Defaults to true outside production so
+	// enabling it in production is always an explicit decision.
+	LOG_REQUEST_BODY: booleanish.optional(),
+	// Maximum serialized request body size (characters) before truncation.
+	LOG_BODY_MAX_LENGTH: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(100_000)
+		.default(2_048),
 	PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
 	HTTP_BODY_LIMIT: z.string().default('1mb'),
 	ADMIN_API_TOKEN: optionalNonEmpty,
@@ -122,6 +132,8 @@ export type AppConfig = Readonly<{
 	log: {
 		level: z.infer<typeof envSchema>['LOG_LEVEL'];
 		pretty: boolean;
+		requestBody: boolean;
+		bodyMaxLength: number;
 	};
 	http: {
 		port: number;
@@ -206,6 +218,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		log: {
 			level: value.LOG_LEVEL,
 			pretty: value.LOG_PRETTY ?? value.NODE_ENV !== 'production',
+			requestBody: value.LOG_REQUEST_BODY ?? value.NODE_ENV !== 'production',
+			bodyMaxLength: value.LOG_BODY_MAX_LENGTH,
 		},
 		http: {
 			port: value.PORT,
