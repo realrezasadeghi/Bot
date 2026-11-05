@@ -40,6 +40,8 @@ A Node.js + TypeScript + Express academic scheduling bot with PostgreSQL, Drizzl
 │   ├── logging.md                # HTTP logging reference
 │   ├── openapi.json              # Generated OpenAPI 3.1 specification
 │   └── releasing.md              # Release policy & procedures
+├── .specify/                     # Spec Kit templates, scripts, constitution
+├── .opencode/commands/           # Spec Kit commands for OpenCode
 ├── drizzle/                      # Drizzle migration SQL files
 ├── scripts/
 │   ├── generate-openapi.ts        # Writes docs/openapi.json
@@ -250,6 +252,61 @@ parity against the committed `docs/openapi.json`):
 
 ```bash
 pnpm test:api
+```
+
+## Spec-Driven Development (Spec Kit)
+
+This project uses [GitHub Spec Kit](https://github.github.io/spec-kit/) for
+spec-driven development, wired to OpenCode. The templates, the process
+commands, and the project constitution live in `.specify/`, and the OpenCode
+commands live in `.opencode/commands/`.
+
+Install the CLI once:
+
+```bash
+uv tool install specify-cli
+```
+
+Then drive the workflow **from the OpenCode chat**, one step at a time:
+
+| Command                 | Purpose                                              |
+| ----------------------- | ---------------------------------------------------- |
+| `/speckit.constitution` | Create or amend the project constitution             |
+| `/speckit.specify`      | Write the feature specification                      |
+| `/speckit.clarify`      | Resolve ambiguous requirements (optional)            |
+| `/speckit.plan`         | Produce the implementation plan                      |
+| `/speckit.tasks`        | Break the plan into actionable tasks                 |
+| `/speckit.analyze`      | Cross-artifact consistency report (optional)         |
+| `/speckit.checklist`    | Generate a requirements-quality checklist (optional) |
+| `/speckit.implement`    | Execute the tasks                                    |
+| `/speckit.converge`     | Find the remaining gaps and re-plan                  |
+
+Example:
+
+```text
+/speckit.specify Add CSV export to the admin sync-runs endpoint. Preserve
+the existing JSON response and the bearer authentication.
+```
+
+The project constitution in `.specify/memory/constitution.md` records the
+principles the repository already enforces (hexagonal dependency rules, the
+Zod-first API contract, the quality gates), so every plan is checked against
+them.
+
+Inspect or repair the installation:
+
+```bash
+specify integration status   # verify the installed integration
+specify check                # verify the agent CLI is available
+specify integration upgrade opencode   # refresh after a CLI upgrade
+```
+
+The optional bug-fixing and idea-assessment processes are separate
+extensions:
+
+```bash
+specify extension add bug
+specify extension add assess
 ```
 
 ## Code Quality
