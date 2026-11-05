@@ -47,6 +47,15 @@ const envSchema = z.object({
 		.default(2_048),
 	PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
 	HTTP_BODY_LIMIT: z.string().default('1mb'),
+	// Defaults to true outside production so the docs never expose the admin
+	// surface publicly unless explicitly enabled.
+	API_DOCS_ENABLED: booleanish.optional(),
+	API_DOCS_PATH: z.string().trim().startsWith('/').default('/api/docs'),
+	API_OPENAPI_PATH: z
+		.string()
+		.trim()
+		.startsWith('/')
+		.default('/api/openapi.json'),
 	ADMIN_API_TOKEN: optionalNonEmpty,
 
 	DATABASE_URL: z
@@ -139,6 +148,11 @@ export type AppConfig = Readonly<{
 		port: number;
 		bodyLimit: string;
 		adminApiToken?: string;
+		apiDocs: {
+			enabled: boolean;
+			path: string;
+			openapiPath: string;
+		};
 	};
 	database: {
 		url: string;
@@ -225,6 +239,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			port: value.PORT,
 			bodyLimit: value.HTTP_BODY_LIMIT,
 			adminApiToken: value.ADMIN_API_TOKEN,
+			apiDocs: {
+				enabled: value.API_DOCS_ENABLED ?? value.NODE_ENV !== 'production',
+				path: value.API_DOCS_PATH,
+				openapiPath: value.API_OPENAPI_PATH,
+			},
 		},
 		database: {
 			url: value.DATABASE_URL,

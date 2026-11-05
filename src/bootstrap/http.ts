@@ -1,13 +1,13 @@
 import 'dotenv/config';
+import { createHttpApi } from '../adapters/inbound/http/http-api.js';
 import { loadConfig } from '../config/env.js';
-import { createApp } from './app.js';
-import { createAppContainer } from './container.js';
+import { createAppContainer, createHttpApiDependencies } from './container.js';
 
 const config = loadConfig();
 const container = createAppContainer(config);
-const app = createApp(container);
+const app = createHttpApi(createHttpApiDependencies(container));
 
-const server = app.listen(config.http.port, () => {
+const server = app.listen(config.http.port, '0.0.0.0', () => {
 	container.logger.info(
 		{
 			port: config.http.port,
@@ -43,6 +43,7 @@ async function shutdown(signal: string): Promise<void> {
 process.on('SIGINT', () => {
 	void shutdown('SIGINT');
 });
+
 process.on('SIGTERM', () => {
 	void shutdown('SIGTERM');
 });

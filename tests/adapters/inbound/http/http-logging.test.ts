@@ -3,12 +3,11 @@ import express from 'express';
 import pino from 'pino';
 import supertest from 'supertest';
 import { describe, expect, it } from 'vitest';
-import type { AppContainer } from '../../src/bootstrap/container.js';
-import { createAdminAuthMiddleware } from '../../src/bootstrap/middleware/admin-auth.js';
-import { createErrorHandler } from '../../src/bootstrap/middleware/error-handler.js';
-import { createHttpLogger } from '../../src/bootstrap/middleware/http-logger.js';
-import { notFoundHandler } from '../../src/bootstrap/middleware/not-found.js';
-import type { AppConfig } from '../../src/config/env.js';
+import { createAdminAuthMiddleware } from '../../../../src/adapters/inbound/http/middleware/admin-auth.js';
+import { createErrorHandler } from '../../../../src/adapters/inbound/http/middleware/error-handler.js';
+import { createHttpLogger } from '../../../../src/adapters/inbound/http/middleware/http-logger.js';
+import { notFoundHandler } from '../../../../src/adapters/inbound/http/middleware/not-found.js';
+import type { AppConfig } from '../../../../src/config/env.js';
 
 type ExpressApp = ReturnType<typeof express>;
 type LogConfig = AppConfig['log'];
@@ -38,11 +37,8 @@ interface TestAppOptions {
 	configure?: (app: ExpressApp) => void;
 }
 
-// Only the fields the admin middleware reads; the rest of the container is
-// irrelevant to request logging.
-const adminContainer = {
-	config: { http: { adminApiToken: 'test-admin-token' } },
-} as unknown as AppContainer;
+// The admin middleware only reads the configured token.
+const adminToken = 'test-admin-token';
 
 function createTestApp(options: TestAppOptions = {}) {
 	const lines: LogLine[] = [];
@@ -89,7 +85,7 @@ function createTestApp(options: TestAppOptions = {}) {
 		response.json({ ok: true });
 	});
 
-	app.use('/api/admin', createAdminAuthMiddleware(adminContainer));
+	app.use('/api/admin', createAdminAuthMiddleware(adminToken));
 	app.get('/api/admin/data', (_request, response) => {
 		response.json({ ok: true });
 	});

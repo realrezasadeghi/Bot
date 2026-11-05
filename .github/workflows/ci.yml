@@ -163,7 +163,58 @@ jobs:
 
 
   # --------------------------------------------------
-  # 4. Docker Build Verification
+  # 4. API Contract Verification
+  # --------------------------------------------------
+
+  api_contract:
+    name: API Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          # Full history so `origin/master` is available for the
+          # breaking-change comparison.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install oasdiff
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            "https://github.com/oasdiff/oasdiff/releases/download/v1.35.0/oasdiff_1.35.0_linux_amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP" oasdiff
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Verify generated spec and contract tests
+        run: pnpm api:check
+
+      - name: Check for breaking OpenAPI changes
+        env:
+          OPENAPI_BASE_REF: origin/master
+        run: pnpm api:diff
+
+
+  # --------------------------------------------------
+  # 5. Docker Build Verification
   # --------------------------------------------------
 
   container_build:
@@ -175,6 +226,7 @@ jobs:
       - lint_typecheck
       - test
       - build
+      - api_contract
 
     steps:
       - name: Checkout
@@ -200,7 +252,7 @@ jobs:
 
 
   # --------------------------------------------------
-  # 5. Semantic Release
+  # 6. Semantic Release
   # --------------------------------------------------
 
   release:
@@ -214,6 +266,7 @@ jobs:
       - lint_typecheck
       - test
       - build
+      - api_contract
       - container_build
 
     runs-on: ubuntu-latest
@@ -320,7 +373,7 @@ jobs:
 
 
   # --------------------------------------------------
-  # 6. Publish Multi-Architecture Docker Image to GHCR
+  # 7. Publish Multi-Architecture Docker Image to GHCR
   # --------------------------------------------------
 
   publish_image:
@@ -332,6 +385,7 @@ jobs:
       - lint_typecheck
       - test
       - build
+      - api_contract
       - container_build
       - release
 
@@ -352,6 +406,7 @@ jobs:
       needs.lint_typecheck.result == 'success' &&
       needs.test.result == 'success' &&
       needs.build.result == 'success' &&
+      needs.api_contract.result == 'success' &&
       needs.container_build.result == 'success' &&
       (
         (
@@ -483,7 +538,7 @@ jobs:
 
 
   # --------------------------------------------------
-  # 7. Deploy to VPS
+  # 8. Deploy to VPS
   # --------------------------------------------------
 
   deploy:

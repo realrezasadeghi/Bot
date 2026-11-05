@@ -1,4 +1,8 @@
 import type { Logger as PinoLogger } from 'pino';
+import type {
+	HttpApiDependencies,
+	WebhookPlatform,
+} from '../adapters/inbound/http/http-dependencies.js';
 import { DefaultBotRenderer } from '../adapters/outbound/messaging/bot-renderer.js';
 import { PlatformMessagingRouter } from '../adapters/outbound/messaging/platform-router.js';
 import { TelegramCompatibleMessagingAdapter } from '../adapters/outbound/messaging/telegram-compatible.js';
@@ -35,6 +39,7 @@ import { GetStudyFields } from '../application/use-cases/academic/get-study-fiel
 import { GetUpcomingExaminations } from '../application/use-cases/academic/get-upcoming-examinations.js';
 import { ImportUniversityAcademicData } from '../application/use-cases/academic/import-university-academic-data.js';
 import { SaveStudentCourseSelection } from '../application/use-cases/academic/save-student-course-selection.js';
+import { SyncAcademicTerm } from '../application/use-cases/academic/sync-academic-term.js';
 import { SynchronizeAcademicData } from '../application/use-cases/academic/synchronize-academic-data.js';
 import { UpdateStudentCourseSelection } from '../application/use-cases/academic/update-student-course-selection.js';
 import { UpdateStudentNotificationPreferences } from '../application/use-cases/academic/update-student-notification-preferences.js';
@@ -96,6 +101,7 @@ export interface AppContainer {
 	generateClassOccurrences: GenerateClassOccurrences;
 	importUniversityData: ImportUniversityAcademicData;
 	synchronizeAcademicData: SynchronizeAcademicData;
+	syncAcademicTerm: SyncAcademicTerm;
 	close(): Promise<void>;
 }
 
@@ -308,6 +314,12 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		clock,
 		logger,
 	});
+	const syncAcademicTerm = new SyncAcademicTerm({
+		importUniversityData,
+		synchronizeAcademicData,
+		generateClassOccurrences,
+		uow,
+	});
 	const studyFields = new PostgresStudyFieldRepository(connection.db);
 	const studyFieldOfferingMappings =
 		new PostgresStudyFieldOfferingMappingRepository(connection.db);
@@ -344,8 +356,59 @@ export function createAppContainer(config: AppConfig): AppContainer {
 		generateClassOccurrences,
 		importUniversityData,
 		synchronizeAcademicData,
+		syncAcademicTerm,
 		async close() {
 			await connection.pool.end();
 		},
+	};
+}
+
+/**
+ * Builds the dependencies of the HTTP driving adapter.
+ *
+ * This is the composition root's job: it translates the wired container into
+ * the narrow set of ports and use cases the HTTP adapter is allowed to see.
+ */
+export function createHttpApiDependencies(
+	container: AppContainer,
+): HttpApiDependencies {
+	const webhookPlatforms: WebhookPlatform[] = [];
+
+	if (container.config.telegram) {
+		webhookPlatforms.push({
+			platform: PlatformCode.Telegram,
+			botScope: container.config.telegram.botScope,
+			webhookSecret: container.config.telegram.webhookSecret,
+		});
+	}
+
+	if (container.config.bale) {
+		webhookPlatforms.push({
+			platform: PlatformCode.Bale,
+			botScope: container.config.bale.botScope,
+			webhookSecret: container.config.bale.webhookSecret,
+		});
+	}
+
+	return {
+		config: {
+			http: container.config.http,
+			log: container.config.log,
+			university: container.config.university,
+		},
+		logger: container.logger,
+		pinoLogger: container.pinoLogger,
+		uow: container.uow,
+		webhookPlatforms,
+		useCases: {
+			syncAcademicTerm: container.syncAcademicTerm,
+			generateClassOccurrences: container.generateClassOccurrences,
+			scheduleClassReminders: container.scheduleClassReminders,
+			scheduleExamReminders: container.scheduleExamReminders,
+			generateDailySummaries: container.generateDailySummaries,
+			dispatchNotifications: container.dispatchNotifications,
+			handleIncoming: container.handleIncoming,
+		},
+		messaging: container.messaging,
 	};
 }

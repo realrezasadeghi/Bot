@@ -46,7 +46,8 @@ export class TelegramCompatibleMessagingAdapter implements MessagingPort {
 		}/sendMessage`;
 
 		try {
-			const chatId = message.recipient.externalChatId ?? message.recipient.externalUserId;
+			const chatId =
+				message.recipient.externalChatId ?? message.recipient.externalUserId;
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },

@@ -34,17 +34,27 @@ A Node.js + TypeScript + Express academic scheduling bot with PostgreSQL, Drizzl
 ```
 .
 ├── .github/workflows/ci.yml      # GitHub Actions CI / release pipeline
-├── docs/releasing.md             # Release policy & procedures
+├── docs/
+│   ├── api.md                    # API contract & OpenAPI workflow
+│   ├── architecture.md           # Hexagonal architecture & dependency rules
+│   ├── logging.md                # HTTP logging reference
+│   ├── openapi.json              # Generated OpenAPI 3.1 specification
+│   └── releasing.md              # Release policy & procedures
 ├── drizzle/                      # Drizzle migration SQL files
 ├── scripts/
+│   ├── generate-openapi.ts        # Writes docs/openapi.json
+│   ├── check-openapi-breaking.mjs # oasdiff breaking-change gate
+│   ├── postprocess-postman.mjs    # Binds Postman collection variables
 │   ├── sync-lockfile.js          # Syncs pnpm-lock.yaml after version bump
 │   ├── recover-release.js        # Recovers failed Docker publish for a tag
 │   └── validate-release.js       # Validates tag vs package.json version
 ├── src/
-│   ├── bootstrap/                # App, HTTP server, worker, container, routes
-│   ├── application/              # Use-cases, DTOs, services, ports
 │   ├── domain/                   # Domain entities & value objects
-│   ├── adapters/                 # Persistence, messaging, university sources
+│   ├── application/              # Use-cases, DTOs, services, ports
+│   ├── adapters/                 # Hexagonal adapters
+│   │   ├── inbound/              # Driving: HTTP API, platform webhooks
+│   │   └── outbound/             # Driven: persistence, messaging, university, system
+│   ├── bootstrap/                # Composition root: container, HTTP & worker entrypoints
 │   ├── cli/                      # CLI entry points (migrate, sync, seed, etc.)
 │   └── config/                   # Environment configuration (Zod)
 ├── tests/                        # Vitest unit & integration tests
@@ -54,11 +64,17 @@ A Node.js + TypeScript + Express academic scheduling bot with PostgreSQL, Drizzl
 └── package.json
 ```
 
+The codebase follows **Hexagonal Architecture (Ports & Adapters)**: `domain` and
+`application` are the inside of the hexagon, `adapters` are the outside, and
+`bootstrap` is the composition root that wires them together. See
+[docs/architecture.md](docs/architecture.md) for the layer map, the dependency
+rules, and how to add an endpoint.
+
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 22.14
 - pnpm 12.4.2
 - PostgreSQL 17 (local or Docker)
 
@@ -134,6 +150,15 @@ This starts PostgreSQL, runs the migration service, then starts the HTTP and wor
 
 ## API Reference
 
+The full OpenAPI 3.1 specification is generated from the shared Zod
+contracts. With the server running, open:
+
+- **Scalar docs** — http://localhost:3000/api/docs
+- **OpenAPI JSON** — http://localhost:3000/api/openapi.json
+
+Docs are enabled outside production and disabled in production by default.
+Set `API_DOCS_ENABLED=true` to enable them in production.
+
 ### Health
 
 ```
@@ -149,7 +174,9 @@ POST /api/webhooks/telegram
 POST /api/webhooks/bale
 ```
 
-Platform webhook endpoints for incoming bot messages.
+Platform webhook endpoints for incoming bot messages. Mounted only when the
+corresponding platform token is configured; when a webhook secret is
+configured, the matching secret header is required.
 
 ### Admin (requires `ADMIN_API_TOKEN` Bearer auth)
 
@@ -160,6 +187,9 @@ POST   /api/admin/notifications/schedule  # Schedule reminders & summaries
 POST   /api/admin/notifications/dispatch  # Dispatch due notification jobs
 GET    /api/admin/sync-runs/latest     # Get the latest sync run record
 ```
+
+See [docs/api.md](docs/api.md) for the contract workflow, error format, and
+CI checks.
 
 ## Worker
 
@@ -215,6 +245,13 @@ Run only integration tests:
 pnpm test:integration
 ```
 
+Run the API contract tests (route behaviour, response schemas, and OpenAPI
+parity against the committed `docs/openapi.json`):
+
+```bash
+pnpm test:api
+```
+
 ## Code Quality
 
 ```bash
@@ -232,6 +269,22 @@ pnpm typecheck
 
 # Production build
 pnpm build
+```
+
+### API specification
+
+```bash
+# Regenerate docs/openapi.json from the Zod contracts
+pnpm api:generate
+
+# Lint the generated OpenAPI document
+pnpm api:lint
+
+# Check for breaking changes against the base branch (requires oasdiff)
+pnpm api:diff
+
+# Regenerate the Postman collection
+pnpm api:postman
 ```
 
 ## Releasing
@@ -312,6 +365,7 @@ redaction rules, and production security notes.
 See `.env.example` for the complete list. Key groups:
 
 - **Runtime** — `NODE_ENV`, `PORT`, `LOG_LEVEL`, `LOG_PRETTY`, `LOG_REQUEST_BODY`, `LOG_BODY_MAX_LENGTH`, `ADMIN_API_TOKEN`
+- **API docs** — `API_DOCS_ENABLED`, `API_DOCS_PATH`, `API_OPENAPI_PATH`
 - **Database** — `DATABASE_URL`, `DATABASE_POOL_MAX`
 - **University portal** — `UNIVERSITY_SOURCE_KEY`, `UNIVERSITY_OFFER_URL`, term codes, view state, cookies
 - **Messaging** — `TELEGRAM_BOT_TOKEN`, `BALE_BOT_TOKEN` and related base URLs/scopes

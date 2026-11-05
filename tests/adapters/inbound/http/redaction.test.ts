@@ -4,7 +4,7 @@ import {
 	isSensitiveKey,
 	REDACTED,
 	redact,
-} from '../../src/bootstrap/logging/redaction.js';
+} from '../../../../src/adapters/inbound/http/logging/redaction.js';
 
 describe('redact', () => {
 	it('redacts sensitive properties at any depth', () => {

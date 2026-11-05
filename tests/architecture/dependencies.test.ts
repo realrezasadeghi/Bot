@@ -81,6 +81,7 @@ describe('hexagonal dependency direction', () => {
 		expect(
 			forbiddenImports(files, [
 				'/adapters/',
+				'/bootstrap/',
 				'/config/',
 				'express',
 				'drizzle-orm',
@@ -92,6 +93,46 @@ describe('hexagonal dependency direction', () => {
 				'node:fs',
 			]),
 		).toEqual([]);
+	});
+
+	it('keeps adapters independent of the composition root', async () => {
+		const paths = await collectTypeScriptFiles(join(sourceRoot, 'adapters'));
+		const files = await Promise.all(
+			paths.map(async (path) => ({
+				path,
+				source: await readFile(path, 'utf8'),
+			})),
+		);
+
+		// Adapters are usable on their own: the composition root wires them,
+		// it is never imported by them.
+		expect(forbiddenImports(files, ['/bootstrap/'])).toEqual([]);
+	});
+
+	it('keeps the driven adapters free of the HTTP framework', async () => {
+		const paths = await collectTypeScriptFiles(
+			join(sourceRoot, 'adapters', 'outbound'),
+		);
+		const files = await Promise.all(
+			paths.map(async (path) => ({
+				path,
+				source: await readFile(path, 'utf8'),
+			})),
+		);
+
+		expect(forbiddenImports(files, ['express'])).toEqual([]);
+	});
+
+	it('keeps configuration independent of adapters and the composition root', async () => {
+		const paths = await collectTypeScriptFiles(join(sourceRoot, 'config'));
+		const files = await Promise.all(
+			paths.map(async (path) => ({
+				path,
+				source: await readFile(path, 'utf8'),
+			})),
+		);
+
+		expect(forbiddenImports(files, ['/adapters/', '/bootstrap/'])).toEqual([]);
 	});
 });
 

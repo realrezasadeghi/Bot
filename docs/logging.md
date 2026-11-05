@@ -11,7 +11,7 @@ request id, redacted secrets, and level-by-status semantics.
 ## Pipeline position
 
 The HTTP logger is the **first** middleware in `createApp`
-(`src/bootstrap/app.ts`), before the body parsers, routes, the 404 handler,
+(`src/adapters/inbound/http/http-api.ts`), before the body parsers, routes, the 404 handler,
 and the error handler:
 
 ```text
@@ -121,7 +121,7 @@ any nesting depth, including arrays:
 `cvv`, plus `set-cookie`, `proxy-authorization`, `x-api-key`, `x-auth-token`,
 `x-csrf-token`, `x-webhook-secret`, and `x-telegram-bot-api-secret-token`.
 
-The list lives in `src/bootstrap/logging/redaction.ts`.
+The list lives in `src/adapters/inbound/http/logging/redaction.ts`.
 
 ## Configuration
 
@@ -165,9 +165,9 @@ with Docker/Kubernetes log drivers, Loki, and ELK:
 ## Extending
 
 - **Add a sensitive key**: append its normalized form to `SENSITIVE_KEYS` in
-  `src/bootstrap/logging/redaction.ts` and add a case in
-  `tests/bootstrap/redaction.test.ts`.
+  `src/adapters/inbound/http/logging/redaction.ts` and add a case in
+  `tests/adapters/inbound/http/redaction.test.ts`.
 - **Log extra request context**: add fields in `completionProps`
-  (`src/bootstrap/middleware/http-logger.ts`) — they are evaluated at
+  (`src/adapters/inbound/http/middleware/http-logger.ts`) — they are evaluated at
   response finish, after routing, parsing, and authentication.
 - **Change levels**: adjust `levelFor` in the same file.

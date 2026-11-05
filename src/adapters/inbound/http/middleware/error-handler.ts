@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
-import { UniversitySnapshotValidationError } from '../../application/dto/university.js';
-import { ConfigurationError } from '../../config/env.js';
-import { DomainError } from '../../domain/shared/errors.js';
+import { UniversitySnapshotValidationError } from '../../../../application/dto/university.js';
+import { ConfigurationError } from '../../../../config/env.js';
+import { DomainError } from '../../../../domain/shared/errors.js';
+import { RequestValidationError } from './request-validation-error.js';
 
 /**
  * Centralized error-handling middleware.
@@ -27,16 +28,20 @@ export function createErrorHandler() {
 		response.err = error instanceof Error ? error : new Error(String(error));
 
 		const details =
-			error instanceof UniversitySnapshotValidationError
+			error instanceof RequestValidationError
 				? { issues: error.issues }
-				: undefined;
+				: error instanceof UniversitySnapshotValidationError
+					? { issues: error.issues }
+					: undefined;
 
 		const code =
-			error instanceof DomainError
-				? error.code
-				: status === 500
-					? 'INTERNAL_ERROR'
-					: 'REQUEST_ERROR';
+			error instanceof RequestValidationError
+				? 'VALIDATION_ERROR'
+				: error instanceof DomainError
+					? error.code
+					: status === 500
+						? 'INTERNAL_ERROR'
+						: 'REQUEST_ERROR';
 
 		response.status(status).json({
 			error: {
@@ -49,6 +54,7 @@ export function createErrorHandler() {
 }
 
 function httpStatusOf(error: unknown): number {
+	if (error instanceof RequestValidationError) return 400;
 	if (error instanceof UniversitySnapshotValidationError) return 422;
 	if (error instanceof ConfigurationError) return 503;
 	if (error instanceof DomainError) {

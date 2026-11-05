@@ -1,9 +1,9 @@
 import 'dotenv/config';
 
 import { ConfigurationError, loadConfig } from '../config/env.js';
+import { toUniversitySourceRequest } from '../config/university-source-request.js';
 import { SyncRunStatus } from '../domain/academic/sync-run.js';
 import { createAppContainer } from './container.js';
-import { syncTerm, toUniversitySourceRequest } from './sync-term.js';
 
 // --------------------------------------------------
 // Bootstrap
@@ -46,8 +46,7 @@ function errorMessage(error: unknown): string {
 
 async function runSync(): Promise<void> {
 	try {
-		const result = await syncTerm(
-			container,
+		const result = await container.syncAcademicTerm.execute(
 			toUniversitySourceRequest(config.university),
 		);
 

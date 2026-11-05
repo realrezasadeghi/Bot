@@ -1,0 +1,7 @@
+apis:
+  main:
+    root: ./docs/openapi.json
+
+rules:
+  # The health endpoint legitimately has no 4xx response.
+  operation-4xx-response: off

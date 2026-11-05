@@ -1,534 +1,3575 @@
 {
-	"info": {
-		"name": "Academic Scheduling Bot - API Routes",
-		"_postman_id": "academic-scheduling-bot-api-routes",
-		"description": "Postman collection for all HTTP API routes exposed by the academic-scheduling-bot Express application.\n\nRoutes:\n- GET /health - Health check\n- POST /webhooks/telegram - Telegram webhook (secret auth)\n- POST /webhooks/bale - Bale webhook (secret auth)\n- POST /admin/sync - Sync academic term (Bearer auth)\n- POST /admin/occurrences - Generate class occurrences (Bearer auth)\n- POST /admin/notifications/schedule - Schedule notifications (Bearer auth)\n- POST /admin/notifications/dispatch - Dispatch due notifications (Bearer auth)\n- GET /admin/sync-runs/latest - Get latest sync run (Bearer auth)\n\nAuthentication:\n- Admin routes require: Authorization: Bearer {{adminApiToken}}\n- Telegram webhook requires: x-telegram-bot-api-secret-token: {{telegramWebhookSecret}}\n- Bale webhook requires: x-webhook-secret: {{baleWebhookSecret}}\n\nBase URL: {{baseUrl}} (e.g. http://localhost:3000)",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
 	"item": [
 		{
 			"name": "Health",
+			"description": "Service health checks.",
 			"item": [
 				{
-					"name": "GET /health",
-					"description": "Health check endpoint. Verifies the database connection is working by querying academic levels.\n\nReturns 200 with { status: 'ok' } when healthy.\nReturns 500 when database is unreachable.",
+					"id": "d12e9683-c40d-46cd-953d-293d16d73bce",
+					"name": "Health check",
 					"request": {
-						"method": "GET",
-						"header": [],
+						"name": "Health check",
+						"description": {
+							"content": "Returns `{ status: \"ok\" }` when the database is reachable.",
+							"type": "text/plain"
+						},
 						"url": {
-							"raw": "{{baseUrl}}/health",
-							"host": ["{{baseUrl}}"],
-							"path": ["health"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 200', function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test('Response has status ok', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data.status).to.equal('ok');",
-									"});"
-								]
+							"path": [
+								"api",
+								"health"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
+						],
+						"method": "GET",
+						"body": {},
+						"auth": null
+					},
+					"response": [
+						{
+							"id": "bcc8c585-c631-446a-8052-0efb56ca70f0",
+							"name": "Healthy",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"health"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"status\": \"<string>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "1ee48716-43e5-40df-aa04-0895f8d5eca4",
+							"name": "Database unreachable or unexpected error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"health"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
 						}
-					]
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
 				}
 			]
 		},
 		{
 			"name": "Webhooks",
+			"description": "Inbound platform webhooks.",
 			"item": [
 				{
-					"name": "POST /webhooks/telegram - Text Message",
-					"description": "Telegram webhook endpoint. Receives updates from Telegram and processes them through the bot.\n\nAuth: Requires `x-telegram-bot-api-secret-token` header matching `TELEGRAM_WEBHOOK_SECRET`.\n\nBody: Telegram update object (message or callback_query).\n\nResponses:\n- 200 { ok: true } - Event processed successfully\n- 200 { ok: true, ignored: true } - Event had no actionable content\n- 401 { error: { code: 'UNAUTHORIZED' } } - Invalid or missing secret token",
+					"id": "63f4564d-5aba-47e7-aa8f-ff5d53c4c5e1",
+					"name": "Receive a Telegram update",
 					"request": {
-						"method": "POST",
+						"name": "Receive a Telegram update",
+						"description": {
+							"content": "Accepts a Telegram update. Returns 404 when TELEGRAM_BOT_TOKEN is not configured. When TELEGRAM_WEBHOOK_SECRET is configured, the matching secret header is required.",
+							"type": "text/plain"
+						},
+						"url": {
+							"path": [
+								"api",
+								"webhooks",
+								"telegram"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
+								"disabled": false,
+								"description": {
+									"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+									"type": "text/plain"
+								},
 								"key": "x-telegram-bot-api-secret-token",
 								"value": "{{telegramWebhookSecret}}",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
 						],
+						"method": "POST",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 10,\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\",\n      \"language_code\": \"fa\"\n    },\n    \"chat\": {\n      \"id\": 123456789,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1730000000\n  }\n}"
+							"raw": "{\n  \"update_id\": 1,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": {\n      \"id\": 1,\n      \"first_name\": \"User\"\n    },\n    \"chat\": {\n      \"id\": 1,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1760000000\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							},
+							"disabled": false
 						},
-						"url": {
-							"raw": "{{baseUrl}}/webhooks/telegram",
-							"host": ["{{baseUrl}}"],
-							"path": ["webhooks", "telegram"]
-						}
+						"auth": null
 					},
-					"event": [
+					"response": [
 						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 200', function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test('Response has ok field', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data).to.have.property('ok');",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /webhooks/telegram - Callback Query",
-					"description": "Telegram webhook with a callback query (inline button press).\n\nAuth: Requires `x-telegram-bot-api-secret-token` header.",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
+							"id": "f7eeee30-912a-4b70-9c53-4cf4980a6302",
+							"name": "Update accepted",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"telegram"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
 							},
-							{
-								"key": "x-telegram-bot-api-secret-token",
-								"value": "{{telegramWebhookSecret}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"update_id\": 123456790,\n  \"callback_query\": {\n    \"id\": \"callback-123\",\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\"\n    },\n    \"message\": {\n      \"message_id\": 11,\n      \"chat\": {\n        \"id\": 123456789,\n        \"type\": \"private\"\n      }\n    },\n    \"data\": \"pref:time:07:30\"\n  }\n}"
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"ok\": \"<boolean>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
 						},
-						"url": {
-							"raw": "{{baseUrl}}/webhooks/telegram",
-							"host": ["{{baseUrl}}"],
-							"path": ["webhooks", "telegram"]
+						{
+							"id": "7773fd2f-81ec-4616-946f-b73cb1b4cd57",
+							"name": "Invalid or missing webhook secret",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"telegram"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"ok\": \"<boolean>\",\n  \"error\": \"<string>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "66df55e4-5d13-4346-b5d0-68b0f0e5a956",
+							"name": "The platform is not configured",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"telegram"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
 						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
 					}
 				},
 				{
-					"name": "POST /webhooks/telegram - Invalid Secret (401)",
-					"description": "Verify that an invalid or missing secret token returns 401.",
+					"id": "fbe477eb-aab3-4f87-86dc-a05a805b054a",
+					"name": "Receive a Bale update",
 					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "x-telegram-bot-api-secret-token",
-								"value": "wrong-secret",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"update_id\": 1,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": { \"id\": 1, \"first_name\": \"Test\" },\n    \"chat\": { \"id\": 1, \"type\": \"private\" },\n    \"text\": \"/start\"\n  }\n}"
+						"name": "Receive a Bale update",
+						"description": {
+							"content": "Accepts a Bale update. Returns 404 when BALE_BOT_TOKEN is not configured. When BALE_WEBHOOK_SECRET is configured, the matching secret header is required.",
+							"type": "text/plain"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/webhooks/telegram",
-							"host": ["{{baseUrl}}"],
-							"path": ["webhooks", "telegram"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 401', function () {",
-									"  pm.response.to.have.status(401);",
-									"});",
-									"",
-									"pm.test('Error code is UNAUTHORIZED', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data.error.code).to.equal('UNAUTHORIZED');",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /webhooks/bale - Text Message",
-					"description": "Bale webhook endpoint. Receives updates from Bale messenger.\n\nAuth: Requires `x-webhook-secret` header matching `BALE_WEBHOOK_SECRET`.\n\nBody: Bale update object (message or callback_query).",
-					"request": {
-						"method": "POST",
+							"path": [
+								"api",
+								"webhooks",
+								"bale"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
+								"disabled": false,
+								"description": {
+									"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+									"type": "text/plain"
+								},
 								"key": "x-webhook-secret",
 								"value": "{{baleWebhookSecret}}",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
 						],
+						"method": "POST",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 10,\n    \"from\": {\n      \"id\": 123456789,\n      \"first_name\": \"Reza\",\n      \"username\": \"reza_user\",\n      \"language_code\": \"fa\"\n    },\n    \"chat\": {\n      \"id\": 123456789,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1730000000\n  }\n}"
+							"raw": "{\n  \"update_id\": 1,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": {\n      \"id\": 1,\n      \"first_name\": \"User\"\n    },\n    \"chat\": {\n      \"id\": 1,\n      \"type\": \"private\"\n    },\n    \"text\": \"/start\",\n    \"date\": 1760000000\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							},
+							"disabled": false
 						},
-						"url": {
-							"raw": "{{baseUrl}}/webhooks/bale",
-							"host": ["{{baseUrl}}"],
-							"path": ["webhooks", "bale"]
+						"auth": null
+					},
+					"response": [
+						{
+							"id": "ed229153-92c8-4906-8512-ea7e5591dc7a",
+							"name": "Update accepted",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"bale"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"ok\": \"<boolean>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "2fe99dec-3dc8-4776-9463-1f40693c67b5",
+							"name": "Invalid or missing webhook secret",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"bale"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"ok\": \"<boolean>\",\n  \"error\": \"<string>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "0eb5a34e-0480-483e-a936-34f8434e97b6",
+							"name": "The platform is not configured",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"webhooks",
+										"bale"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"disabled": false,
+										"description": {
+											"content": "Telegram webhook secret. Required when TELEGRAM_WEBHOOK_SECRET is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-telegram-bot-api-secret-token",
+										"value": "<string>"
+									},
+									{
+										"disabled": false,
+										"description": {
+											"content": "Bale/generic webhook secret. Required when the platform webhook secret is configured.",
+											"type": "text/plain"
+										},
+										"key": "x-webhook-secret",
+										"value": "<string>"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"key_0\": false,\n  \"key_1\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
 						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
 					}
 				}
 			]
 		},
 		{
 			"name": "Admin",
+			"description": "Authenticated administrative operations.",
 			"item": [
 				{
-					"name": "POST /admin/sync - Sync Academic Term",
-					"description": "Synchronizes academic data from the university portal for a given term.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nFlow:\n1. Fetch snapshot from university source (HTML or fixture)\n2. Persist to database (terms, levels, fields, programs, courses, instructors, offerings, meeting patterns)\n3. Generate class occurrences for the term\n\nBody:\n- termCode (optional): Term code to sync. Defaults to UNIVERSITY_TERM_CODE from env.\n\nResponses:\n- 200 - Sync completed successfully\n- 422 - Snapshot validation failed\n- 502 - University external source error\n- 503 - No university source configured",
+					"id": "5243c01c-654a-407b-88c1-eaa5045410fd",
+					"name": "Synchronize academic data",
 					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"termCode\": \"14051\"\n}"
+						"name": "Synchronize academic data",
+						"description": {
+							"content": "Fetches a university snapshot, persists it, and generates class occurrences.",
+							"type": "text/plain"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/admin/sync",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "sync"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 200', function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test('Response has synchronization result', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data).to.have.property('synchronization');",
-									"  pm.expect(data).to.have.property('termId');",
-									"  pm.expect(data).to.have.property('occurrences');",
-									"  pm.expect(data).to.have.property('warnings');",
-									"  pm.expect(data).to.have.property('complete');",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /admin/sync - Missing Admin Token (401)",
-					"description": "Verify that a missing admin token returns 401.",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"termCode\": \"14051\"\n}"
+							"path": [
+								"api",
+								"admin",
+								"sync"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
 						},
-						"url": {
-							"raw": "{{baseUrl}}/admin/sync",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "sync"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 401', function () {",
-									"  pm.response.to.have.status(401);",
-									"});"
-								]
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
-						}
-					]
-				},
-				{
-					"name": "POST /admin/occurrences - Generate Class Occurrences",
-					"description": "Generates class occurrences for a term within a date range.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nBody:\n- termId (required): Database term ID\n- from (optional): Start date (YYYY-MM-DD)\n- to (optional): End date (YYYY-MM-DD)\n- reconcileAbsent (optional): Whether to deactivate absent occurrences (default: false)\n\nResponses:\n- 200 - Occurrences generated\n- 400 - Missing termId",
-					"request": {
+						],
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"termId\": \"term-uuid-here\",\n  \"from\": \"2026-01-01\",\n  \"to\": \"2026-06-30\",\n  \"reconcileAbsent\": false\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/admin/occurrences",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "occurrences"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 200', function () {",
-									"  pm.response.to.have.status(200);",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /admin/occurrences - Missing termId (400)",
-					"description": "Verify that missing termId returns 400 validation error.",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/admin/occurrences",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "occurrences"]
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 400', function () {",
-									"  pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test('Error code is VALIDATION_ERROR', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data.error.code).to.equal('VALIDATION_ERROR');",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /admin/notifications/schedule - Schedule Notifications",
-					"description": "Schedules class reminders and daily summaries for a user.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nBody:\n- userId (optional): User ID to schedule notifications for\n\nResponses:\n- 200 - Notifications scheduled",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"userId\": \"user-uuid-here\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/admin/notifications/schedule",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "notifications", "schedule"]
-						}
-					}
-				},
-				{
-					"name": "POST /admin/notifications/dispatch - Dispatch Due Notifications",
-					"description": "Dispatches all due notification jobs (reminders, daily summaries).\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nNo request body.\n\nResponses:\n- 200 - Notifications dispatched",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/admin/notifications/dispatch",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "notifications", "dispatch"]
-						}
-					}
-				},
-				{
-					"name": "GET /admin/sync-runs/latest - Latest Sync Run",
-					"description": "Retrieves the latest sync run for a source.\n\nAuth: Requires `Authorization: Bearer {{adminApiToken}}`.\n\nQuery:\n- sourceKey (optional): Source key. Defaults to UNIVERSITY_SOURCE_KEY from env.\n\nResponses:\n- 200 - Latest sync run details",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminApiToken}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/admin/sync-runs/latest?sourceKey=eqbal-portal",
-							"host": ["{{baseUrl}}"],
-							"path": ["admin", "sync-runs", "latest"],
-							"query": [
+						"body": {},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
 								{
-									"key": "sourceKey",
-									"value": "eqbal-portal"
+									"key": "token",
+									"value": "{{bearerToken}}"
 								}
 							]
 						}
 					},
-					"event": [
+					"response": [
 						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Status code is 200', function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test('Response has syncRun field', function () {",
-									"  const data = pm.response.json();",
-									"  pm.expect(data).to.have.property('syncRun');",
-									"});"
-								]
-							}
+							"id": "c52be88f-0540-4090-99ec-859cbb158286",
+							"name": "Synchronization result",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"synchronization\": {\n    \"syncRunId\": \"<string>\",\n    \"status\": \"COMPLETED\",\n    \"stats\": {\n      \"levels\": \"<integer>\",\n      \"fields\": \"<integer>\",\n      \"terms\": \"<integer>\",\n      \"programs\": \"<integer>\",\n      \"programOfferings\": \"<integer>\",\n      \"courses\": \"<integer>\",\n      \"instructors\": \"<integer>\",\n      \"courseOfferings\": \"<integer>\",\n      \"meetingPatterns\": \"<integer>\",\n      \"scheduleExceptions\": \"<integer>\",\n      \"examinations\": \"<integer>\",\n      \"occurrencesCreated\": \"<integer>\",\n      \"occurrencesUpdated\": \"<integer>\",\n      \"occurrencesCancelled\": \"<integer>\",\n      \"warnings\": \"<integer>\"\n    },\n    \"warnings\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"complete\": \"<boolean>\",\n    \"reconcileAbsent\": \"<boolean>\"\n  },\n  \"termId\": \"<string,null>\",\n  \"occurrences\": {\n    \"created\": \"<integer>\",\n    \"updated\": \"<integer>\",\n    \"cancelled\": \"<integer>\",\n    \"createdOccurrenceIds\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"changedOccurrenceIds\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"cancelledOccurrenceIds\": [\n      \"<string>\",\n      \"<string>\"\n    ]\n  },\n  \"warnings\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"complete\": \"<boolean>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "d575cf2e-6a39-4b12-a86c-5f6118dbacbb",
+							"name": "Invalid request",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "88ea7442-c8ee-42cd-ac8e-df3075eebeb7",
+							"name": "Missing or invalid admin token",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "9093f4f7-1e50-46dd-ba18-e696e85162e9",
+							"name": "Resource not found",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "e000dab4-eeb9-4f98-ae16-f5dc5dba9c6d",
+							"name": "Conflict",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "fbe251a6-cfaa-4e15-a715-1489e5e28f49",
+							"name": "Snapshot validation failed",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "0d990d0a-9a8c-4de5-8aed-496cffcb8425",
+							"name": "Unexpected server error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "6eecc57c-f463-44ec-bedb-872b851ad163",
+							"name": "Integration requirement not resolved",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Not Implemented",
+							"code": 501,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "9fbafcb6-4f85-4335-81b5-b0c3759b5a6f",
+							"name": "External source error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Bad Gateway",
+							"code": 502,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "d065b95f-2a2a-4355-8bb4-9a0393c6cdff",
+							"name": "Admin API disabled or configuration error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
 						}
-					]
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"id": "789790eb-bbfd-4b69-841a-15b2e70b80da",
+					"name": "Generate class occurrences",
+					"request": {
+						"name": "Generate class occurrences",
+						"description": {},
+						"url": {
+							"path": [
+								"api",
+								"admin",
+								"occurrences"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"termId\": \"term-1\",\n  \"from\": \"2026-11-05\",\n  \"to\": \"2026-11-12\",\n  \"reconcileAbsent\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							},
+							"disabled": false
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "7d2e20fd-ed41-4c69-bb07-5d10e9f90d04",
+							"name": "Occurrence generation result",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"created\": \"<integer>\",\n  \"updated\": \"<integer>\",\n  \"cancelled\": \"<integer>\",\n  \"createdOccurrenceIds\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"changedOccurrenceIds\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"cancelledOccurrenceIds\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "fac1d3f8-7e1b-4cfe-8550-05d1c878bc8d",
+							"name": "Invalid request",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "4ee2bff0-ad78-415f-9774-149c15655da3",
+							"name": "Missing or invalid admin token",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "c3b4bd97-ce2a-4eb0-95f6-541be5ea1ce0",
+							"name": "Resource not found",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "6f2efe85-c549-4bde-a784-4641d3997f6d",
+							"name": "Conflict",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "41904500-8334-4f88-818d-8ef168d14562",
+							"name": "Snapshot validation failed",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "e801cdf5-1f6e-4ba4-a012-24dcc0fc61d3",
+							"name": "Unexpected server error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "8378fc43-6891-4673-83b6-ae368221688c",
+							"name": "Integration requirement not resolved",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Implemented",
+							"code": 501,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "26054fbe-e122-47a4-b10a-d48368b3729d",
+							"name": "External source error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Bad Gateway",
+							"code": 502,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "690174a8-a5bf-487b-a7b6-d1869f86d706",
+							"name": "Admin API disabled or configuration error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"occurrences"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"termId\": \"<string>\",\n  \"from\": \"<string>\",\n  \"to\": \"<string>\",\n  \"reconcileAbsent\": \"<boolean>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"id": "ae98c823-a0c0-4084-a39b-156d4eeefb61",
+					"name": "Schedule reminders and daily summaries",
+					"request": {
+						"name": "Schedule reminders and daily summaries",
+						"description": {},
+						"url": {
+							"path": [
+								"api",
+								"admin",
+								"notifications",
+								"schedule"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							},
+							"disabled": false
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "500f7de3-c348-48c3-899d-fce929320d3c",
+							"name": "Scheduling results",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"reminders\": {\n    \"subscriptionsProcessed\": \"<integer>\",\n    \"selectionsProcessed\": \"<integer>\",\n    \"jobsCreated\": \"<integer>\",\n    \"jobsAlreadyPresent\": \"<integer>\",\n    \"skipped\": \"<integer>\"\n  },\n  \"examReminders\": {\n    \"enabled\": \"<boolean>\",\n    \"selectionsProcessed\": \"<integer>\",\n    \"jobsCreated\": \"<integer>\",\n    \"jobsAlreadyPresent\": \"<integer>\",\n    \"skipped\": \"<integer>\"\n  },\n  \"summaries\": {\n    \"subscriptionsProcessed\": \"<integer>\",\n    \"jobsCreated\": \"<integer>\",\n    \"jobsAlreadyPresent\": \"<integer>\",\n    \"jobsCancelled\": \"<integer>\",\n    \"skipped\": \"<integer>\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "6ba0b8fb-7ecf-4cc6-87dc-54084598fd26",
+							"name": "Invalid request",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "7a664da8-1e54-4911-b305-7eef824dc170",
+							"name": "Missing or invalid admin token",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "6f26b06d-f24c-4338-aa87-e12901a84593",
+							"name": "Resource not found",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "bcc44f54-7667-4322-bd47-23eb19893d0d",
+							"name": "Conflict",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "3261abe9-ed75-425d-91a5-3d30b7b07f9f",
+							"name": "Snapshot validation failed",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "62535200-89c0-4c9f-a030-0dc1da8266e4",
+							"name": "Unexpected server error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "9521387b-9615-4017-bb86-f0087b06e0c3",
+							"name": "Integration requirement not resolved",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Not Implemented",
+							"code": 501,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "89fb5289-07d0-4011-95e3-d957387b1108",
+							"name": "External source error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Bad Gateway",
+							"code": 502,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "51c60dd1-5b61-46b9-ac1b-dd0fd05bbf00",
+							"name": "Admin API disabled or configuration error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"schedule"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"id": "431a69d8-fa1e-4e08-a3ad-d708037861f1",
+					"name": "Dispatch due notification jobs",
+					"request": {
+						"name": "Dispatch due notification jobs",
+						"description": {},
+						"url": {
+							"path": [
+								"api",
+								"admin",
+								"notifications",
+								"dispatch"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [],
+							"variable": []
+						},
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
+						"body": {},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "f0d15be8-4569-4a89-8db4-a4922f4b1c5d",
+							"name": "Dispatch result",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"claimed\": \"<integer>\",\n  \"sent\": \"<integer>\",\n  \"retried\": \"<integer>\",\n  \"failed\": \"<integer>\",\n  \"cancelled\": \"<integer>\",\n  \"lockLost\": \"<integer>\"\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "e32df95c-6d10-4884-96f9-075cadd94f62",
+							"name": "Invalid request",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "1310dc35-cbd6-421a-8804-ede5a6235f89",
+							"name": "Missing or invalid admin token",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "67218197-d5b9-40fe-9e55-7a2b68463a13",
+							"name": "Resource not found",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "8d322a04-1bb2-499d-8421-36f4e8403c99",
+							"name": "Conflict",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "897e9b4b-048a-4f75-af65-312f8355e315",
+							"name": "Snapshot validation failed",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "023df9f8-3a5c-4370-bc52-725d9a561cc5",
+							"name": "Unexpected server error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "a9708338-2f22-4ab6-8ed0-12c6d9943fa4",
+							"name": "Integration requirement not resolved",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Not Implemented",
+							"code": 501,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "da16319b-7ea6-414d-b903-10b8d7b6afa8",
+							"name": "External source error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Bad Gateway",
+							"code": 502,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "99342b59-320f-48c6-adb5-11e97eecaec8",
+							"name": "Admin API disabled or configuration error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"notifications",
+										"dispatch"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "POST",
+								"body": {}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"id": "b93e80eb-ccf3-48bf-9bef-e1c7acb36445",
+					"name": "Get the latest sync run",
+					"request": {
+						"name": "Get the latest sync run",
+						"description": {},
+						"url": {
+							"path": [
+								"api",
+								"admin",
+								"sync-runs",
+								"latest"
+							],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"query": [
+								{
+									"disabled": false,
+									"description": {
+										"content": "",
+										"type": "text/plain"
+									},
+									"key": "sourceKey",
+									"value": "{{sourceKey}}",
+									"type": "text"
+								}
+							],
+							"variable": []
+						},
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"method": "GET",
+						"body": {},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "30152729-c947-4507-9d53-df606f39daf1",
+							"name": "Latest sync run for the source",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"syncRun\": {\n    \"id\": \"<string>\",\n    \"sourceKey\": \"<string>\",\n    \"status\": \"REJECTED\",\n    \"startedAt\": \"8108-02-29T20:53:01Z\",\n    \"finishedAt\": \"0940-12-30T23:20:24.10Z\",\n    \"stats\": {\n      \"levels\": \"<integer>\",\n      \"fields\": \"<integer>\",\n      \"terms\": \"<integer>\",\n      \"programs\": \"<integer>\",\n      \"programOfferings\": \"<integer>\",\n      \"courses\": \"<integer>\",\n      \"instructors\": \"<integer>\",\n      \"courseOfferings\": \"<integer>\",\n      \"meetingPatterns\": \"<integer>\",\n      \"scheduleExceptions\": \"<integer>\",\n      \"examinations\": \"<integer>\",\n      \"occurrencesCreated\": \"<integer>\",\n      \"occurrencesUpdated\": \"<integer>\",\n      \"occurrencesCancelled\": \"<integer>\",\n      \"warnings\": \"<integer>\"\n    },\n    \"errorSummary\": \"<string,null>\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "ff3713a6-e032-49a8-883f-2fff5cc12d25",
+							"name": "Invalid request",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "2ffb6a58-6492-43ab-bb91-95fd00288780",
+							"name": "Missing or invalid admin token",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "12b297d1-4f9d-4866-b89d-c2b42a07d956",
+							"name": "Resource not found",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "f2c56ee7-a2fa-47d0-a398-bb5a5f578f58",
+							"name": "Conflict",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "d63e7948-91d7-4669-82c8-1f1ecbbde0a1",
+							"name": "Snapshot validation failed",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "237b0d23-ed96-4197-8370-1024b8f77b32",
+							"name": "Unexpected server error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "003550bb-99a5-40b7-a860-40078e380c4a",
+							"name": "Integration requirement not resolved",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Not Implemented",
+							"code": 501,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "e278d907-265f-4377-b524-8e06dacb4476",
+							"name": "External source error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Bad Gateway",
+							"code": 502,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						},
+						{
+							"id": "864ae12b-7e4c-4815-adae-97cd9e1e2085",
+							"name": "Admin API disabled or configuration error",
+							"originalRequest": {
+								"url": {
+									"path": [
+										"api",
+										"admin",
+										"sync-runs",
+										"latest"
+									],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"query": [
+										{
+											"disabled": false,
+											"description": {
+												"content": "",
+												"type": "text/plain"
+											},
+											"key": "sourceKey",
+											"value": "<string>"
+										}
+									],
+									"variable": []
+								},
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"description": {
+											"content": "Added as a part of security scheme: bearer",
+											"type": "text/plain"
+										},
+										"key": "Authorization",
+										"value": "Bearer <token>"
+									}
+								],
+								"method": "GET",
+								"body": {}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<string>\",\n    \"details\": \"\"\n  }\n}",
+							"cookie": [],
+							"_postman_previewlanguage": "json"
+						}
+					],
+					"event": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
 				}
 			]
 		}
 	],
+	"event": [],
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:3000",
-			"type": "string",
-			"description": "Base URL of the running API (PORT from env, default 3000)"
-		},
-		{
-			"key": "adminApiToken",
-			"value": "",
-			"type": "string",
-			"description": "Admin API token (ADMIN_API_TOKEN from env). Required for /admin/* routes."
-		},
-		{
-			"key": "telegramBotToken",
-			"value": "",
-			"type": "string",
-			"description": "Telegram bot token (TELEGRAM_BOT_TOKEN from env)"
-		},
-		{
-			"key": "telegramBotScope",
-			"value": "telegram-main",
-			"type": "string",
-			"description": "Telegram bot scope (TELEGRAM_BOT_SCOPE from env)"
-		},
-		{
-			"key": "telegramWebhookSecret",
-			"value": "",
-			"type": "string",
-			"description": "Telegram webhook secret (TELEGRAM_WEBHOOK_SECRET from env)"
-		},
-		{
-			"key": "baleBotToken",
-			"value": "",
-			"type": "string",
-			"description": "Bale bot token (BALE_BOT_TOKEN from env)"
-		},
-		{
-			"key": "baleBotScope",
-			"value": "bale-main",
-			"type": "string",
-			"description": "Bale bot scope (BALE_BOT_SCOPE from env)"
-		},
-		{
-			"key": "baleWebhookSecret",
-			"value": "",
-			"type": "string",
-			"description": "Bale webhook secret (BALE_WEBHOOK_SECRET from env)"
+			"value": "/"
 		}
 	],
-	"profile": null,
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					"console.log('[Academic Scheduling Bot API] Base URL: {{baseUrl}}');"
-				]
-			}
+	"info": {
+		"_postman_id": "27f939b4-a90b-4fe5-b036-f76a300d35bd",
+		"name": "Academic Scheduling Bot API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": {
+			"content": "HTTP API for the academic scheduling bot. Admin routes require a bearer token; webhooks use platform secret headers.",
+			"type": "text/plain"
 		}
-	]
+	}
 }

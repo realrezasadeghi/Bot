@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import type { Logger as PinoLogger } from 'pino';
 import { pinoHttp } from 'pino-http';
-import type { AppConfig } from '../../config/env.js';
+import type { AppConfig } from '../../../../config/env.js';
 import { captureRequestBody, redact } from '../logging/redaction.js';
-import { serializeError } from '../serialize-error.js';
+import { serializeError } from '../logging/serialize-error.js';
 
 export interface HttpLoggerOptions {
 	/** Raw pino instance shared with application logs (`container.pinoLogger`). */

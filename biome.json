@@ -68,6 +68,8 @@
 			"!**/.cache",
 			"!**/.codebase-memory",
 			"!**/.env*",
+			"!docs/openapi.json",
+			"!postman/api-routes.postman_collection.json",
 			"!**/pnpm-lock.yaml",
 			"!**/package-lock.json",
 			"!**/yarn.lock",

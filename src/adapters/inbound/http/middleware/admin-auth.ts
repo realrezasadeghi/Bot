@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { AppContainer } from '../container.js';
 
 /**
  * Middleware that protects admin routes with a bearer token.
@@ -7,10 +6,9 @@ import type { AppContainer } from '../container.js';
  * When ADMIN_API_TOKEN is not configured, all admin routes return 503.
  * When the provided Authorization header does not match, returns 401.
  */
-export function createAdminAuthMiddleware(container: AppContainer) {
+export function createAdminAuthMiddleware(adminApiToken: string | undefined) {
 	return (request: Request, response: Response, next: NextFunction): void => {
-		const token = container.config.http.adminApiToken;
-		if (!token) {
+		if (!adminApiToken) {
 			response.status(503).json({
 				error: {
 					code: 'ADMIN_DISABLED',
@@ -19,7 +17,7 @@ export function createAdminAuthMiddleware(container: AppContainer) {
 			});
 			return;
 		}
-		if (request.header('authorization') !== `Bearer ${token}`) {
+		if (request.header('authorization') !== `Bearer ${adminApiToken}`) {
 			response.status(401).json({
 				error: { code: 'UNAUTHORIZED', message: 'Invalid admin token' },
 			});
